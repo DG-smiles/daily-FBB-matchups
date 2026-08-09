@@ -82,7 +82,7 @@ export function buildRecommendations(
         effectiveWeight: 0,
       },
       {
-        label: "SP quality allowed",
+        label: `SP vs ${effectiveBatSide}HB`,
         ops: pitcherSplitVsBatterSide?.OPS ?? null,
         pa: pitcherSplitVsBatterSide?.PA ?? 0,
         qualityScore: toQualityScore(pitcherSplitVsBatterSide?.OPS ?? null),

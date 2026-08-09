@@ -22,6 +22,7 @@ interface MlbStatSplit {
   split: { code: string; description: string };
   stat: {
     plateAppearances?: number;
+    battersFaced?: number; // pitching stat lines use this instead of plateAppearances
     atBats?: number;
     obp?: string;
     slg?: string;
@@ -43,7 +44,7 @@ function toSplitLine(row: MlbStatSplit | undefined, mlbamId: number): SplitLine 
   const s = row.stat;
   return {
     mlbamId,
-    PA: s.plateAppearances ?? 0,
+    PA: s.plateAppearances ?? s.battersFaced ?? 0,
     AB: s.atBats ?? 0,
     OBP: s.obp != null ? parseFloat(s.obp) : null,
     SLG: s.slg != null ? parseFloat(s.slg) : null,

@@ -7,7 +7,13 @@ import { resolveOpponent } from "@/lib/mlb";
 import { LineupRecommendation, ScheduleGame, SplitLine } from "@/lib/types";
 
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  // Use local date components, not toISOString() (which is UTC and can
+  // roll over to "tomorrow" for anyone west of UTC in the evening).
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export default function Page() {
@@ -90,12 +96,7 @@ export default function Page() {
   return (
     <div className="wrap">
       <div className="eyebrow">Men of Girth</div>
-      <h1>Daily Lineup Pull</h1>
-      <p className="sub">
-        Probable pitchers, batter season/recent-form splits, and opposing-SP quality — all from
-        MLB&apos;s Stats API — blended into a single SIT score per hitter (0 = clear start, 100 =
-        clear bench).
-      </p>
+      <h1>Daily Lineup Analysis</h1>
 
       <div className="controls">
         <input
@@ -118,12 +119,16 @@ export default function Page() {
         </div>
       )}
 
-      {recs && (
-        <div className="status-line">
-          {recs.length} active hitters · sorted best matchup → worst · pulled{" "}
-          {new Date().toLocaleTimeString()}
-        </div>
-      )}
+      <div className="status-line">
+        <div>Source: MLB Stats API</div>
+        {recs && (
+          <div>
+            {recs.length} batters analyzed @{" "}
+            {new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+          </div>
+        )}
+        <div>SIT: 0 = start, 100 = bench</div>
+      </div>
 
       {splitErrors && (
         <div className="error-box">
