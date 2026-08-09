@@ -13,8 +13,8 @@ For each active hitter, four inputs are blended into one 0–100 score
 
 | Component | Base weight | Full-confidence at |
 |---|---|---|
-| Batter's season OPS vs the opposing SP's hand | 40% | 15 PA |
-| Opposing SP's season OPS *allowed* vs the batter's side | 30% | 15 PA |
+| Opposing SP's season OPS *allowed* vs the batter's side | 45% | 15 PA |
+| Batter's season OPS vs the opposing SP's hand | 25% | 15 PA |
 | Batter's trailing 30-day OPS | 20% | 20 PA |
 | Batter's trailing 10-day OPS | 10% | 10 PA |
 
@@ -26,9 +26,15 @@ components — so a small-sample stat never swings the score as hard as a
 reliable one, and missing data (0 PA) drops a component out entirely rather
 than being treated as a zero.
 
+**SB Bonus (not part of the weighted blend):** applied as a flat reduction
+*after* the four components above are blended, since stolen-base activity is
+a start/sit signal OPS doesn't capture. Based on the batter's trailing-30-day
+SB/CS: **-2 SIT points per SB, -1 per CS**, floored at 0.
+
 The full breakdown (OPS, PA, and each component's actual contribution %
-after redistribution) is shown on every hitter's card, not just the final
-number — so you can see *why* a SIT score landed where it did.
+after redistribution, plus the SB bonus line) is shown on every hitter's
+card, not just the final number — so you can see *why* a SIT score landed
+where it did.
 
 ## Total network calls per pull
 

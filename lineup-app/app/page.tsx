@@ -182,6 +182,15 @@ function RecCard({ rec }: { rec: LineupRecommendation }) {
             <span className="breakdown-weight">{Math.round(c.effectiveWeight * 100)}% wt</span>
           </div>
         ))}
+        {(rec.sbBonus.sb > 0 || rec.sbBonus.cs > 0) && (
+          <div className="breakdown-row">
+            <span className="breakdown-label">SB Bonus (30d)</span>
+            <span className="breakdown-value">
+              {rec.sbBonus.sb} SB, {rec.sbBonus.cs} CS
+            </span>
+            <span className="breakdown-weight">-{rec.sbBonus.pointsOff} SIT</span>
+          </div>
+        )}
       </div>
     </div>
   );

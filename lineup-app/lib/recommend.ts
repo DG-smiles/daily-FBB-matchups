@@ -16,12 +16,21 @@ const PA_THRESHOLDS = {
 };
 
 // Stated priority order, as base weights before confidence adjustment.
+// SP quality is weighted highest — a tough/weak opposing starter matters
+// more than the batter's own (often small-sample) platoon split.
 const BASE_WEIGHTS = {
-  seasonBatter: 0.4,
-  pitcherQuality: 0.3,
+  pitcherQuality: 0.45,
+  seasonBatter: 0.25,
   form30: 0.2,
   form10: 0.1,
 };
+
+// SB bonus: NOT part of the weighted blend — applied as a flat point
+// reduction to the final SIT score, since stolen-base activity is a start/sit
+// signal OPS doesn't capture (a speed threat has value even in a so-so
+// matchup). Based on the batter's trailing-30-day SB/CS.
+const SB_BONUS_PER_SB = 2;
+const CS_BONUS_PER_CS = 1;
 
 function toQualityScore(ops: number | null): number | null {
   if (ops == null) return null;
@@ -73,21 +82,21 @@ export function buildRecommendations(
 
     const components: SitComponent[] = [
       {
-        label: "Season vs " + (pitcherHand ?? "?") + "HP",
-        ops: splitVsPitcherHand?.OPS ?? null,
-        pa: splitVsPitcherHand?.PA ?? 0,
-        qualityScore: toQualityScore(splitVsPitcherHand?.OPS ?? null),
-        baseWeight: BASE_WEIGHTS.seasonBatter,
-        confidence: confidence(splitVsPitcherHand?.PA, PA_THRESHOLDS.seasonBatter),
-        effectiveWeight: 0,
-      },
-      {
         label: `SP vs ${effectiveBatSide}HB`,
         ops: pitcherSplitVsBatterSide?.OPS ?? null,
         pa: pitcherSplitVsBatterSide?.PA ?? 0,
         qualityScore: toQualityScore(pitcherSplitVsBatterSide?.OPS ?? null),
         baseWeight: BASE_WEIGHTS.pitcherQuality,
         confidence: confidence(pitcherSplitVsBatterSide?.PA, PA_THRESHOLDS.pitcherQuality),
+        effectiveWeight: 0,
+      },
+      {
+        label: "Season vs " + (pitcherHand ?? "?") + "HP",
+        ops: splitVsPitcherHand?.OPS ?? null,
+        pa: splitVsPitcherHand?.PA ?? 0,
+        qualityScore: toQualityScore(splitVsPitcherHand?.OPS ?? null),
+        baseWeight: BASE_WEIGHTS.seasonBatter,
+        confidence: confidence(splitVsPitcherHand?.PA, PA_THRESHOLDS.seasonBatter),
         effectiveWeight: 0,
       },
       {
@@ -129,6 +138,18 @@ export function buildRecommendations(
       for (const c of components) c.effectiveWeight = c.effectiveWeight / totalWeight;
     }
 
+    // SB bonus: flat point reduction, NOT part of the weighted blend, applied
+    // after — stolen-base activity is a start/sit signal OPS misses entirely.
+    const sb = batterForm30?.SB ?? 0;
+    const cs = batterForm30?.CS ?? 0;
+    const sbBonusPoints = sb * SB_BONUS_PER_SB + cs * CS_BONUS_PER_CS;
+    let appliedBonus = 0;
+    if (sitScore != null && sbBonusPoints > 0) {
+      const before = sitScore;
+      sitScore = Math.max(0, sitScore - sbBonusPoints);
+      appliedBonus = before - sitScore;
+    }
+
     let note = "No game today.";
     if (!matchup) {
       note = "Off day — not in today's schedule.";
@@ -152,6 +173,7 @@ export function buildRecommendations(
       pitcherSplitVsBatterSide,
       sitScore,
       sitBreakdown: components,
+      sbBonus: { sb, cs, pointsOff: appliedBonus },
       note,
     };
   });

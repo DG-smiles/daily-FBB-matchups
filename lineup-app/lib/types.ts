@@ -47,6 +47,8 @@ export interface SplitLine {
   SLG: number | null;
   OPS: number | null;
   AVG: number | null;
+  SB?: number;
+  CS?: number;
 }
 
 export interface LineupRecommendation {
@@ -59,6 +61,7 @@ export interface LineupRecommendation {
   pitcherSplitVsBatterSide: SplitLine | null;
   sitScore: number | null; // 0-100, 100 = worst matchup, definite bench
   sitBreakdown: SitComponent[];
+  sbBonus: { sb: number; cs: number; pointsOff: number };
   note: string;
 }
 

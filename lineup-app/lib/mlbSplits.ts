@@ -28,6 +28,8 @@ interface MlbStatSplit {
     slg?: string;
     ops?: string;
     avg?: string;
+    stolenBases?: number;
+    caughtStealing?: number;
   };
 }
 
@@ -50,6 +52,8 @@ function toSplitLine(row: MlbStatSplit | undefined, mlbamId: number): SplitLine 
     SLG: s.slg != null ? parseFloat(s.slg) : null,
     OPS: s.ops != null ? parseFloat(s.ops) : null,
     AVG: s.avg != null ? parseFloat(s.avg) : null,
+    SB: s.stolenBases ?? 0,
+    CS: s.caughtStealing ?? 0,
   };
 }
 
