@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { defaultRoster } from "@/lib/defaultRoster";
+import { useEffect, useState } from "react";
 import { buildRecommendations, sitSortKey } from "@/lib/recommend";
 import { resolveOpponent, ResolvedPlayerStatus } from "@/lib/mlb";
 import { assignLineup, LineupAssignmentResult } from "@/lib/assignLineup";
 import { LineupDecisionView, ExcludedPlayer } from "@/components/LineupDecisionView";
 import { LineupRecommendation, Player, ScheduleGame, SplitLine } from "@/lib/types";
+
+const OWNER_KEY_STORAGE = "lineupOwnerKey";
 
 function todayISO(): string {
   // Use local date components, not toISOString() (which is UTC and can
@@ -18,7 +19,13 @@ function todayISO(): string {
   return `${year}-${month}-${day}`;
 }
 
+type AuthState = "checking" | "locked" | "unlocked";
+
 export default function Page() {
+  const [authState, setAuthState] = useState<AuthState>("checking");
+  const [ownerKey, setOwnerKey] = useState<string | null>(null);
+  const [roster, setRoster] = useState<Player[] | null>(null);
+
   const [date, setDate] = useState(todayISO());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +34,44 @@ export default function Page() {
   const [lineup, setLineup] = useState<LineupAssignmentResult | null>(null);
   const [excluded, setExcluded] = useState<ExcludedPlayer[]>([]);
 
+  // One-time device unlock: a link visited once as ?key=<OWNER_ACCESS_KEY>
+  // gets that key stashed in localStorage, then this device never needs the
+  // link again. Without a valid key, the roster is never fetched — it's
+  // gated server-side in /api/roster, not just hidden in this UI. See
+  // lib/auth.ts for the server-side check and setup instructions.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const urlKey = url.searchParams.get("key");
+    const key = urlKey || window.localStorage.getItem(OWNER_KEY_STORAGE);
+
+    if (urlKey) {
+      window.localStorage.setItem(OWNER_KEY_STORAGE, urlKey);
+      url.searchParams.delete("key");
+      window.history.replaceState({}, "", url.toString());
+    }
+
+    if (!key) {
+      setAuthState("locked");
+      return;
+    }
+
+    fetch("/api/roster", { headers: { "x-owner-key": key } })
+      .then(async (res) => {
+        if (!res.ok) {
+          window.localStorage.removeItem(OWNER_KEY_STORAGE);
+          setAuthState("locked");
+          return;
+        }
+        const json = await res.json();
+        setOwnerKey(key);
+        setRoster(json.roster as Player[]);
+        setAuthState("unlocked");
+      })
+      .catch(() => setAuthState("locked"));
+  }, []);
+
   async function pullLineup() {
+    if (!roster || !ownerKey) return;
     setLoading(true);
     setError(null);
     setRecs(null);
@@ -43,7 +87,7 @@ export default function Page() {
       // hand-editing defaultRoster.ts.
       const [scheduleRes, statusRes] = await Promise.all([
         fetch(`/api/schedule?date=${date}`),
-        fetch(`/api/roster-status`),
+        fetch(`/api/roster-status`, { headers: { "x-owner-key": ownerKey } }),
       ]);
 
       const scheduleJson = await scheduleRes.json();
@@ -58,7 +102,7 @@ export default function Page() {
       // today — the hardcoded `status` field in defaultRoster.ts is only a
       // same-day-offline fallback (used if a player's mlbamId is unverified
       // and couldn't be looked up).
-      const resolvedRoster: Player[] = defaultRoster.map((p) => ({
+      const resolvedRoster: Player[] = roster.map((p) => ({
         ...p,
         status: statuses[p.mlbamId]?.status ?? p.status,
       }));
@@ -131,9 +175,26 @@ export default function Page() {
     }
   }
 
+  if (authState === "checking") {
+    return <div className="wrap" />;
+  }
+
+  if (authState === "locked") {
+    return (
+      <div className="wrap">
+        <h1>Daily Lineup Analysis</h1>
+        <div className="card">
+          <div className="note">
+            This device isn&apos;t linked to a roster yet. Open the link that was shared with
+            you to connect one.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="wrap">
-      <div className="eyebrow">Men of Girth</div>
       <h1>Daily Lineup Analysis</h1>
 
       <div className="controls">

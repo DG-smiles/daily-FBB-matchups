@@ -1,4 +1,4 @@
-# Men of Girth — Daily Lineup
+# Daily Lineup Analysis
 
 One-click daily fantasy lineup tool. Pulls today's probable pitchers, batter
 platoon splits + recent form, and opposing-SP quality splits — all from the
@@ -107,8 +107,29 @@ Open `http://localhost:3000`, pick a date, click "Pull today's lineup."
 
 1. Push this repo to GitHub.
 2. Go to [vercel.com/new](https://vercel.com/new), import the repo.
-3. No environment variables needed — everything's a public API call.
-4. Deploy. Share the URL with friends.
+3. In the project's Environment Variables, add `OWNER_ACCESS_KEY` — a long
+   random string, entered as a plain value (do **not** prefix it with
+   `NEXT_PUBLIC_`, or it ships to the browser and defeats the point). This
+   gates the roster — see "Roster access" below.
+4. Deploy.
+5. On your own phone, open `https://your-app.vercel.app/?key=<that string>`
+   once. That device now remembers it — don't reuse that link elsewhere; see
+   below.
+
+## Roster access (device gate)
+
+The roster in `lib/defaultRoster.ts` is no longer bundled into the page for
+anyone who loads it — it's only served by `/api/roster` (and
+`/api/roster-status`) to a request carrying the correct `x-owner-key` header,
+checked server-side in `lib/auth.ts`. Visiting `?key=<OWNER_ACCESS_KEY>` once
+stores that key in the browser's `localStorage` and strips it from the URL;
+every request after that includes it automatically. A device that's never
+seen a valid key just sees "not linked to a roster yet" — no player names,
+no roster shape, nothing roster-specific ships to it at all.
+
+This is a single shared secret, not real per-user login — it exists to stop
+a casually-shared app link from showing your specific roster before real
+accounts exist. See "Multi-user" below for where that's headed.
 
 ## Editing your roster
 
@@ -129,18 +150,11 @@ check those before trusting their split data.
 
 ## Multi-user / friends using this too
 
-Right now the roster is shared/hardcoded for everyone who visits the deployed
-site — good for "this is just my team," not good if friends want their own
-rosters on the same deployment. Two ways to extend this:
-
-- **Simple**: each friend forks the repo and edits `defaultRoster.ts` with their
-  own team, deploys their own copy.
-- **Shared app, separate rosters**: move `defaultRoster` into browser
-  `localStorage` (read/write it client-side in `app/page.tsx` instead of
-  importing the static file) so each visitor's browser remembers their own
-  roster. This needs no backend/database — just a bit more UI for adding/editing
-  players in-browser instead of editing the TypeScript file directly. Happy to
-  build that next if you want it.
+The device-gate above (one shared key) is a stopgap, not real multi-user
+support — everyone who unlocks it still sees the same one roster. A proper
+version (each friend logs in, sees and edits their own roster, in-app
+add/drop against the full MLB hitter pool) is being scoped separately before
+it's built.
 
 ## How a daily pull works, end to end
 

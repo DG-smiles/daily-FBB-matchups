@@ -13,9 +13,13 @@ export const MLB_TEAM_IDS: Record<string, number> = {
 };
 
 /**
- * Default roster: "Men of Girth" as configured Aug 2026.
+ * Default roster, as configured Aug 2026.
  * Edit this list directly to add/drop players — see README for how to find
  * the mlbamId and fangraphsId for a new player.
+ *
+ * This file is only ever imported by server-side code (API routes) — never
+ * by app/page.tsx directly — and is only served to a browser that's passed
+ * the owner-key check in lib/auth.ts. See app/api/roster/route.ts.
  *
  * NOTE: bats/fangraphsId marked "VERIFY" below were not confirmed live
  * (built without internet access) — double check on FanGraphs/MLB.com

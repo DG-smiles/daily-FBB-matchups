@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { defaultRoster } from "@/lib/defaultRoster";
 import { getRosterStatuses } from "@/lib/mlb";
+import { checkOwnerKey } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +12,13 @@ export const dynamic = "force-dynamic";
  * MLB Stats API. Called on every "Pull today's lineup" alongside /api/schedule
  * so a same-day IL move or activation is caught automatically — the `status`
  * field hardcoded in defaultRoster.ts is only a same-day-offline fallback.
+ *
+ * Gated the same as /api/roster since the response is keyed by this
+ * roster's specific player ids.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const denied = checkOwnerKey(req);
+  if (denied) return denied;
   try {
     const players = defaultRoster
       .filter((p) => p.mlbamId > 0) // skip unverified placeholder entries (mlbamId: 0)

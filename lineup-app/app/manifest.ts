@@ -5,7 +5,7 @@ import type { MetadataRoute } from "next";
 // zero-wiring convention as app/icon.png and app/apple-icon.png.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Men of Girth — Daily Lineup",
+    name: "Daily Lineup Analysis",
     short_name: "Lineup",
     description: "Daily platoon-matchup lineup recommendations, from MLB's own Stats API.",
     start_url: "/",

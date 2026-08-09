@@ -2,13 +2,13 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Men of Girth — Daily Lineup",
+  title: "Daily Lineup Analysis",
   description: "Daily platoon-matchup lineup recommendations",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    // Short label under the home-screen icon — "Men of Girth — Daily Lineup"
-    // would just get truncated, same as Yahoo Fantasy's own icon label does.
+    // Short label under the home-screen icon — the full title would just
+    // get truncated, same as Yahoo Fantasy's own icon label does.
     title: "Lineup",
   },
 };
