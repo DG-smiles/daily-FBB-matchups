@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { defaultRoster } from "@/lib/defaultRoster";
-import { buildRecommendations, recommendationScore } from "@/lib/recommend";
+import { buildRecommendations, sitSortKey } from "@/lib/recommend";
+import { resolveOpponent } from "@/lib/mlb";
 import { LineupRecommendation, ScheduleGame, SplitLine } from "@/lib/types";
 
 function todayISO(): string {
@@ -30,29 +31,54 @@ export default function Page() {
       if (!scheduleRes.ok) throw new Error(scheduleJson.error ?? "Schedule fetch failed");
       const games: ScheduleGame[] = scheduleJson.games;
 
-      // Call 2: MLB's own stats endpoint, one request per active hitter,
-      // for season platoon splits + trailing-30-day form (see lib/mlbSplits.ts).
-      const mlbamIds = defaultRoster
-        .filter((p) => p.status !== "IL" && p.status !== "NA")
-        .map((p) => p.mlbamId);
+      const activeRoster = defaultRoster.filter((p) => p.status !== "IL" && p.status !== "NA");
+      const mlbamIds = activeRoster.map((p) => p.mlbamId);
 
+      // Resolve each hitter's opponent pitcher up front so we know which
+      // (unique) pitchers to pull quality splits for — shared starters
+      // (e.g. two hitters facing the same SP) only get fetched once.
+      const pitcherIdSet = new Set<number>();
+      for (const p of activeRoster) {
+        const matchup = resolveOpponent(games, p.mlbTeamId);
+        if (matchup?.opponentPitcher) pitcherIdSet.add(matchup.opponentPitcher.id);
+      }
+
+      // Call 2: MLB stats — per hitter (season split + 30d form + 10d form)
+      // and per unique opposing pitcher (season split allowed), all parallel.
       const splitsRes = await fetch("/api/splits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mlbamIds, season, dateISO: date }),
+        body: JSON.stringify({
+          mlbamIds,
+          pitcherMlbamIds: Array.from(pitcherIdSet),
+          season,
+          dateISO: date,
+        }),
       });
       const splitsJson = await splitsRes.json();
       if (!splitsRes.ok) throw new Error(splitsJson.error ?? "Splits fetch failed");
 
       const vsL: Record<number, SplitLine> = splitsJson.vsL;
       const vsR: Record<number, SplitLine> = splitsJson.vsR;
-      const recent: Record<number, SplitLine> = splitsJson.recent;
+      const form30: Record<number, SplitLine> = splitsJson.form30;
+      const form10: Record<number, SplitLine> = splitsJson.form10;
+      const pitcherVsL: Record<number, SplitLine> = splitsJson.pitcherVsL;
+      const pitcherVsR: Record<number, SplitLine> = splitsJson.pitcherVsR;
       if (splitsJson.errors && Object.keys(splitsJson.errors).length > 0) {
         setSplitErrors(splitsJson.errors);
       }
 
-      const built = buildRecommendations(defaultRoster, games, vsL, vsR, recent);
-      built.sort((a, b) => recommendationScore(b) - recommendationScore(a));
+      const built = buildRecommendations(
+        defaultRoster,
+        games,
+        vsL,
+        vsR,
+        form30,
+        form10,
+        pitcherVsL,
+        pitcherVsR
+      );
+      built.sort((a, b) => sitSortKey(a) - sitSortKey(b));
       setRecs(built);
     } catch (e: any) {
       setError(e.message ?? "Something went wrong.");
@@ -66,8 +92,9 @@ export default function Page() {
       <div className="eyebrow">Men of Girth</div>
       <h1>Daily Lineup Pull</h1>
       <p className="sub">
-        One click: today&apos;s probable pitchers (MLB Stats API) + season platoon splits and
-        trailing-30-day form for every active hitter (FanGraphs), fetched server-side.
+        Probable pitchers, batter season/recent-form splits, and opposing-SP quality — all from
+        MLB&apos;s Stats API — blended into a single SIT score per hitter (0 = clear start, 100 =
+        clear bench).
       </p>
 
       <div className="controls">
@@ -86,14 +113,15 @@ export default function Page() {
         <div className="error-box">
           {error}
           <br />
-          If this is an MLB Stats API error on the recent-form call specifically, the
-          byDateRange statType wasn't verified live — see README troubleshooting.
+          If this is on the recent-form or pitcher-splits call, those weren&apos;t verified live
+          against real output — see README troubleshooting / /api/debug-mlb.
         </div>
       )}
 
       {recs && (
         <div className="status-line">
-          {recs.length} active hitters · pulled {new Date().toLocaleTimeString()}
+          {recs.length} active hitters · sorted best matchup → worst · pulled{" "}
+          {new Date().toLocaleTimeString()}
         </div>
       )}
 
@@ -101,7 +129,8 @@ export default function Page() {
         <div className="error-box">
           Splits failed for: {Object.keys(splitErrors).join(", ")}
           <br />
-          Check /api/debug-mlb?player=&lt;mlbamId&gt; to see the raw MLB API response.
+          Check /api/debug-mlb?player=&lt;mlbamId&gt;&amp;type=recent (or splits) to see the raw
+          MLB API response.
         </div>
       )}
 
@@ -112,24 +141,43 @@ export default function Page() {
   );
 }
 
-function RecCard({ rec }: { rec: LineupRecommendation }) {
-  const ops = rec.splitVsPitcherHand?.OPS;
-  const tagClass = ops == null ? "" : ops >= 0.75 ? "good" : ops < 0.65 ? "bad" : "";
+function sitTagClass(sit: number | null): string {
+  if (sit == null) return "";
+  if (sit <= 35) return "good"; // low SIT = good matchup = green
+  if (sit >= 65) return "bad";
+  return "";
+}
 
+function RecCard({ rec }: { rec: LineupRecommendation }) {
   return (
     <div className="card">
       <div className="card-head">
         <div>
           <div className="player-name">{rec.player.name}</div>
           <div className="player-meta">
-            {rec.player.mlbTeamAbbrev} · {rec.player.eligiblePositions.join("/")} · bats {rec.player.bats}
+            {rec.player.mlbTeamAbbrev} · {rec.player.eligiblePositions.join("/")} · bats{" "}
+            {rec.player.bats}
           </div>
         </div>
-        {ops != null && (
-          <div className={`ops-tag ${tagClass}`}>{ops.toFixed(3)} OPS</div>
+        {rec.sitScore != null && (
+          <div className={`ops-tag ${sitTagClass(rec.sitScore)}`}>SIT: {rec.sitScore}</div>
         )}
       </div>
+
       <div className="note">{rec.note}</div>
+
+      <div className="breakdown">
+        {rec.sitBreakdown.map((c) => (
+          <div className="breakdown-row" key={c.label}>
+            <span className="breakdown-label">{c.label}</span>
+            <span className="breakdown-value">
+              {c.ops != null ? c.ops.toFixed(3) + " OPS" : "no data"}
+              {c.pa > 0 && <span className="breakdown-pa"> ({c.pa} PA)</span>}
+            </span>
+            <span className="breakdown-weight">{Math.round(c.effectiveWeight * 100)}% wt</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

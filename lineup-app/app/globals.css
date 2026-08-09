@@ -152,3 +152,39 @@ button.secondary {
   color: var(--muted);
   margin-bottom: 20px;
 }
+
+.breakdown {
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 3px 0;
+  color: var(--bright);
+  opacity: 0.9;
+}
+
+.breakdown-label {
+  color: var(--muted);
+  min-width: 120px;
+}
+
+.breakdown-value {
+  flex: 1;
+}
+
+.breakdown-pa {
+  color: var(--muted);
+}
+
+.breakdown-weight {
+  color: var(--accent-dim);
+  white-space: nowrap;
+}

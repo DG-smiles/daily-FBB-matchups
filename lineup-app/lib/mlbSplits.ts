@@ -67,6 +67,26 @@ export async function getPlatoonSplits(
 }
 
 /**
+ * vs-LHB and vs-RHB season splits for one PITCHER — i.e. OPS *allowed* to
+ * left-handed and right-handed batters. Same endpoint family as batter
+ * splits, just group=pitching. NOTE: unverified live (the batter-group call
+ * was tested directly; this one wasn't) — check /api/debug-mlb?player=<id>&group=pitching
+ * if it comes back empty.
+ */
+export async function getPitcherPlatoonSplits(
+  mlbamId: number,
+  season: number
+): Promise<{ vsL: SplitLine | null; vsR: SplitLine | null }> {
+  const url = `${MLB_BASE}/people/${mlbamId}/stats?stats=statSplits&group=pitching&sitCodes=vl,vr&season=${season}`;
+  const data = await fetchStatsApi(url);
+  const splits: MlbStatSplit[] = data.stats?.[0]?.splits ?? [];
+  return {
+    vsL: toSplitLine(splits.find((s) => s.split.code === "vl"), mlbamId),
+    vsR: toSplitLine(splits.find((s) => s.split.code === "vr"), mlbamId),
+  };
+}
+
+/**
  * Trailing-N-day form via the same stats family, using byDateRange instead
  * of statSplits. Same endpoint shape as the confirmed-working call above,
  * but this specific statType wasn't tested live — if it 400s or comes back

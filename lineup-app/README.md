@@ -1,13 +1,45 @@
 # Men of Girth — Daily Lineup
 
-One-click daily fantasy lineup tool. Pulls today's probable pitchers (MLB Stats API)
-and season platoon splits + trailing-30-day form for your whole roster (FanGraphs),
-computed server-side so there's no CORS issue and no per-player manual lookups.
+One-click daily fantasy lineup tool. Pulls today's probable pitchers, batter
+platoon splits + recent form, and opposing-SP quality splits — all from the
+MLB Stats API — and blends them into a single SIT score per hitter (see
+below). Everything runs server-side, so there's no CORS issue and no
+per-player manual lookups.
 
-**Total network calls per pull: 1 to MLB for schedule/pitcher-hands (batched for
-the whole slate) + 1 to MLB per active hitter for platoon splits + recent form**
-(fetched together per player). Everything comes from MLB's own public Stats
-API now — no third-party scraping.
+## How the SIT score works
+
+For each active hitter, four inputs are blended into one 0–100 score
+(`lib/recommend.ts`) — **0 = clear start, 100 = clear bench**:
+
+| Component | Base weight | Full-confidence at |
+|---|---|---|
+| Batter's season OPS vs the opposing SP's hand | 40% | 15 PA |
+| Opposing SP's season OPS *allowed* vs the batter's side | 30% | 15 PA |
+| Batter's trailing 30-day OPS | 20% | 20 PA |
+| Batter's trailing 10-day OPS | 10% | 10 PA |
+
+Each OPS is mapped to a 0–100 "quality" score (.500 OPS → 0, 1.100 OPS → 100,
+linear between). Below a component's PA threshold, its weight scales down
+linearly toward 0 (a 5-PA sample gets ~1/3 the weight a 15-PA sample would)
+and the remaining weight is redistributed proportionally across the other
+components — so a small-sample stat never swings the score as hard as a
+reliable one, and missing data (0 PA) drops a component out entirely rather
+than being treated as a zero.
+
+The full breakdown (OPS, PA, and each component's actual contribution %
+after redistribution) is shown on every hitter's card, not just the final
+number — so you can see *why* a SIT score landed where it did.
+
+## Total network calls per pull
+
+- 1 to MLB for the day's schedule + all probable pitchers' hands (batched).
+- 3 per active hitter (season platoon split, 30-day form, 10-day form) — 17
+  hitters ≈ 51 calls.
+- 1 per **unique** opposing starting pitcher (season split allowed) — shared
+  starters (two of your hitters facing the same SP) only cost one call, so
+  this is usually ~10–11, not 17.
+
+All to MLB's own public Stats API — no FanGraphs, no scraping.
 
 ## ⚠️ Built without live testing — read this first
 
@@ -26,26 +58,32 @@ though the underlying API calls were verified live via a separate research pass:
   now the only external data source besides the schedule call — no FanGraphs,
   no scraping, no cheerio dependency.
 
-**What's confirmed working:** the platoon-split call above, and the schedule +
-pitcher-hand calls (`lib/mlb.ts`), both tested live.
+**What's confirmed working:** the batter platoon-split call (`group=hitting`),
+and the schedule + pitcher-hand calls (`lib/mlb.ts`) — all tested live.
 
-**What's NOT yet confirmed:** the trailing-30-day "recent form" call in
-`lib/mlbSplits.ts` (`getRecentForm`), which uses `stats=byDateRange` on the same
-endpoint family. This statType is documented as real in MLB Stats API wrapper
-libraries, but wasn't tested live with actual output the way the platoon-split
-call was. If it fails or comes back empty:
+**What's NOT yet confirmed:**
+- `getRecentForm()` (`stats=byDateRange`) — used for both the 30-day and
+  10-day windows. Same endpoint family, documented as real in MLB Stats API
+  wrapper libraries, but not tested live with actual output.
+- `getPitcherPlatoonSplits()` (`group=pitching&sitCodes=vl,vr`) — same call
+  shape as the confirmed batter version, just the pitching stat group instead
+  of hitting. Untested whether MLB returns the same field names for pitchers
+  (e.g. `ops` as OPS *allowed*) or a different shape.
 
-1. Visit `/api/debug-mlb?player=<mlbamId>&type=recent` on your deployed site
-   (e.g. `?player=682985&type=recent` for Riley Greene) — returns the raw MLB
-   response.
-2. Compare against `?player=682985&type=splits` (the confirmed-working call) to
-   see if the response shape differs.
-3. Paste the output back and the parsing in `getRecentForm()` can be adjusted
-   precisely.
+If either fails or comes back empty:
 
-Everything is one fetch per active hitter (no confirmed batch-multiple-players
-endpoint exists for this stats family), but it's MLB's own public API rather
-than a page that can rate-limit or block scraping — much better reliability
+1. Visit `/api/debug-mlb?player=<mlbamId>&type=recent&group=hitting&days=10`
+   (swap `days=30`, `group=pitching`, `type=splits` as needed) on your
+   deployed site — returns the raw MLB response for that exact call.
+2. Compare against `?player=682985&type=splits&group=hitting` (the
+   confirmed-working call) to see if the response shape differs.
+3. Paste the output back and the parsing in `lib/mlbSplits.ts` can be
+   adjusted precisely.
+
+Everything is one fetch per active hitter per stat type (no confirmed
+batch-multiple-players endpoint exists for this stats family), but it's
+MLB's own public API rather than a page that can rate-limit or block
+scraping — much better reliability
 odds than the FanGraphs rounds.
 
 ## Setup

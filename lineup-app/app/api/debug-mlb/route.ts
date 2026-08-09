@@ -3,15 +3,18 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/debug-mlb?player=<mlbamId>&type=splits|recent
+ * GET /api/debug-mlb?player=<mlbamId>&type=splits|recent&group=hitting|pitching&days=30
  *
- * Returns the raw MLB Stats API response for one player, so if
- * getRecentForm()'s byDateRange call (unverified live, see lib/mlbSplits.ts)
- * doesn't return what's expected, you can see exactly what MLB sent back.
+ * Returns the raw MLB Stats API response for one player/pitcher, so if
+ * getRecentForm() or getPitcherPlatoonSplits() (both less-verified than the
+ * core batter statSplits call) don't return what's expected, you can see
+ * exactly what MLB sent back.
  */
 export async function GET(req: NextRequest) {
   const player = req.nextUrl.searchParams.get("player");
   const type = req.nextUrl.searchParams.get("type") ?? "splits";
+  const group = req.nextUrl.searchParams.get("group") ?? "hitting";
+  const days = parseInt(req.nextUrl.searchParams.get("days") ?? "30", 10);
 
   if (!player) {
     return NextResponse.json({ error: "Missing ?player=<mlbamId>" }, { status: 400 });
@@ -19,12 +22,12 @@ export async function GET(req: NextRequest) {
 
   const season = new Date().getFullYear();
   const today = new Date().toISOString().slice(0, 10);
-  const thirtyAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const start = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 
   const url =
     type === "recent"
-      ? `https://statsapi.mlb.com/api/v1/people/${player}/stats?stats=byDateRange&group=hitting&startDate=${thirtyAgo}&endDate=${today}`
-      : `https://statsapi.mlb.com/api/v1/people/${player}/stats?stats=statSplits&group=hitting&sitCodes=vl,vr&season=${season}`;
+      ? `https://statsapi.mlb.com/api/v1/people/${player}/stats?stats=byDateRange&group=${group}&startDate=${start}&endDate=${today}`
+      : `https://statsapi.mlb.com/api/v1/people/${player}/stats?stats=statSplits&group=${group}&sitCodes=vl,vr&season=${season}`;
 
   try {
     const res = await fetch(url, { next: { revalidate: 0 } });

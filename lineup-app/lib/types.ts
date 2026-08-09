@@ -54,6 +54,20 @@ export interface LineupRecommendation {
   opponentPitcher: ProbablePitcher | null;
   splitVsPitcherHand: SplitLine | null;
   splitVsOppositeHand: SplitLine | null;
-  monthOPS: number | null; // most recent month, same hand split not required
+  form30: SplitLine | null;
+  form10: SplitLine | null;
+  pitcherSplitVsBatterSide: SplitLine | null;
+  sitScore: number | null; // 0-100, 100 = worst matchup, definite bench
+  sitBreakdown: SitComponent[];
   note: string;
+}
+
+export interface SitComponent {
+  label: string;
+  ops: number | null;
+  pa: number;
+  qualityScore: number | null; // 0-100, higher = better for the batter
+  baseWeight: number; // stated priority weight before confidence adjustment
+  confidence: number; // 0-1, based on sample size
+  effectiveWeight: number; // after confidence + renormalization
 }
