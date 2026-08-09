@@ -20,11 +20,11 @@ export function buildRecommendations(
       player.bats === "S" ? (pitcherHand === "L" ? "R" : "L") : player.bats;
 
     const splitVsPitcherHand =
-      pitcherHand === "L" ? vsL[player.fangraphsId] ?? null : vsR[player.fangraphsId] ?? null;
+      pitcherHand === "L" ? vsL[player.mlbamId] ?? null : vsR[player.mlbamId] ?? null;
     const splitVsOppositeHand =
-      pitcherHand === "L" ? vsR[player.fangraphsId] ?? null : vsL[player.fangraphsId] ?? null;
+      pitcherHand === "L" ? vsR[player.mlbamId] ?? null : vsL[player.mlbamId] ?? null;
 
-    const monthOPS = recent[player.fangraphsId]?.OPS ?? null;
+    const monthOPS = recent[player.mlbamId]?.OPS ?? null;
 
     let note = "No game today.";
     if (!matchup) {

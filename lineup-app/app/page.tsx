@@ -14,11 +14,13 @@ export default function Page() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recs, setRecs] = useState<LineupRecommendation[] | null>(null);
+  const [splitErrors, setSplitErrors] = useState<Record<string, string> | null>(null);
 
   async function pullLineup() {
     setLoading(true);
     setError(null);
     setRecs(null);
+    setSplitErrors(null);
     try {
       const season = new Date(date).getFullYear();
 
@@ -28,15 +30,16 @@ export default function Page() {
       if (!scheduleRes.ok) throw new Error(scheduleJson.error ?? "Schedule fetch failed");
       const games: ScheduleGame[] = scheduleJson.games;
 
-      // Call 2: batch splits (vs L, vs R, trailing 30 days) for the whole roster at once.
-      const fangraphsIds = defaultRoster
+      // Call 2: MLB's own stats endpoint, one request per active hitter,
+      // for season platoon splits + trailing-30-day form (see lib/mlbSplits.ts).
+      const mlbamIds = defaultRoster
         .filter((p) => p.status !== "IL" && p.status !== "NA")
-        .map((p) => p.fangraphsId);
+        .map((p) => p.mlbamId);
 
       const splitsRes = await fetch("/api/splits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fangraphsIds, season, dateISO: date }),
+        body: JSON.stringify({ mlbamIds, season, dateISO: date }),
       });
       const splitsJson = await splitsRes.json();
       if (!splitsRes.ok) throw new Error(splitsJson.error ?? "Splits fetch failed");
@@ -44,6 +47,9 @@ export default function Page() {
       const vsL: Record<number, SplitLine> = splitsJson.vsL;
       const vsR: Record<number, SplitLine> = splitsJson.vsR;
       const recent: Record<number, SplitLine> = splitsJson.recent;
+      if (splitsJson.errors && Object.keys(splitsJson.errors).length > 0) {
+        setSplitErrors(splitsJson.errors);
+      }
 
       const built = buildRecommendations(defaultRoster, games, vsL, vsR, recent);
       built.sort((a, b) => recommendationScore(b) - recommendationScore(a));
@@ -80,14 +86,22 @@ export default function Page() {
         <div className="error-box">
           {error}
           <br />
-          If this is a FanGraphs 500/403, see the README troubleshooting section — their API
-          sometimes needs a session cookie added to lib/fangraphs.ts.
+          If this is an MLB Stats API error on the recent-form call specifically, the
+          byDateRange statType wasn't verified live — see README troubleshooting.
         </div>
       )}
 
       {recs && (
         <div className="status-line">
           {recs.length} active hitters · pulled {new Date().toLocaleTimeString()}
+        </div>
+      )}
+
+      {splitErrors && (
+        <div className="error-box">
+          Splits failed for: {Object.keys(splitErrors).join(", ")}
+          <br />
+          Check /api/debug-mlb?player=&lt;mlbamId&gt; to see the raw MLB API response.
         </div>
       )}
 

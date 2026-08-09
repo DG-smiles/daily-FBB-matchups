@@ -4,38 +4,49 @@ One-click daily fantasy lineup tool. Pulls today's probable pitchers (MLB Stats 
 and season platoon splits + trailing-30-day form for your whole roster (FanGraphs),
 computed server-side so there's no CORS issue and no per-player manual lookups.
 
-**Total network calls per pull: 3.** One to MLB (schedule + pitcher hands, batched),
-two to FanGraphs (vs-LHP and vs-RHP splits, batched across your whole roster in one
-call each), plus a third for trailing-30-day form. Compare to ~35 individual lookups
-doing this by hand.
+**Total network calls per pull: 1 to MLB for schedule/pitcher-hands (batched for
+the whole slate) + 1 to MLB per active hitter for platoon splits + recent form**
+(fetched together per player). Everything comes from MLB's own public Stats
+API now — no third-party scraping.
 
 ## ⚠️ Built without live testing — read this first
 
-This was built in an environment with no internet access, so **the code has never
-actually been run against the live APIs**. The logic and endpoints are based on
-documented, working examples (MLB Stats API docs, and a FanGraphs API pattern used
-by the `pybaseball` Python library), but there are two likely failure points on
-your first run:
+This was built in an environment with no internet access for the *code itself*,
+though the underlying API calls were verified live via a separate research pass:
 
-1. **FanGraphs API rejecting the request.** Their `/api/leaders/major-league/data`
-   endpoint may check for more than just a User-Agent/Referer header — possibly a
-   session cookie. If `getBatchSplit` / `getBatchRecentForm` in `lib/fangraphs.ts`
-   error out:
-   - Open `fangraphs.com/leaders/major-league` in a real browser, open DevTools →
-     Network tab, reload, and find the request to `/api/leaders/major-league/data`.
-   - Copy its request headers (especially `Cookie` if present) into `FG_HEADERS`
-     in `lib/fangraphs.ts`.
-   - If FanGraphs' response JSON shape doesn't match what `lib/fangraphs.ts`
-     expects (field names like `OBP`/`SLG`/`AVG`/`playerid`), open that same
-     Network tab response and adjust the `FgRow` interface and parsing to match.
+- **Round 1** tried FanGraphs' internal `/api/leaders/major-league/data` endpoint
+  (used by `pybaseball`) — 403'd from Vercel even with full browser headers,
+  likely an IP-range block on that specific endpoint.
+- **Round 2** switched to scraping FanGraphs' individual `/splits` pages — also
+  abandoned.
+- **Round 3 (current)**: discovered MLB's own Stats API supports platoon splits
+  directly — `/api/v1/people/{mlbamId}/stats?stats=statSplits&group=hitting&sitCodes=vl,vr&season=YYYY`
+  — and **this was confirmed live** with real data (tested against a real player,
+  got back actual `vl`/`vr` split rows with `ops` as a direct field). This is
+  now the only external data source besides the schedule call — no FanGraphs,
+  no scraping, no cheerio dependency.
 
-2. **The `month` split codes.** `13` = vs LHP and `14` = vs RHP were reverse-
-   engineered from FanGraphs' own site links, and `1000` for the custom date-range
-   mode is a guess based on their UI having a "Custom Date Range" option — verify
-   this actually returns the date-filtered data you expect, and adjust if not.
+**What's confirmed working:** the platoon-split call above, and the schedule +
+pitcher-hand calls (`lib/mlb.ts`), both tested live.
 
-Budget 20–30 minutes of debugging against the real APIs on first deploy. After
-that, it should just work daily.
+**What's NOT yet confirmed:** the trailing-30-day "recent form" call in
+`lib/mlbSplits.ts` (`getRecentForm`), which uses `stats=byDateRange` on the same
+endpoint family. This statType is documented as real in MLB Stats API wrapper
+libraries, but wasn't tested live with actual output the way the platoon-split
+call was. If it fails or comes back empty:
+
+1. Visit `/api/debug-mlb?player=<mlbamId>&type=recent` on your deployed site
+   (e.g. `?player=682985&type=recent` for Riley Greene) — returns the raw MLB
+   response.
+2. Compare against `?player=682985&type=splits` (the confirmed-working call) to
+   see if the response shape differs.
+3. Paste the output back and the parsing in `getRecentForm()` can be adjusted
+   precisely.
+
+Everything is one fetch per active hitter (no confirmed batch-multiple-players
+endpoint exists for this stats family), but it's MLB's own public API rather
+than a page that can rate-limit or block scraping — much better reliability
+odds than the FanGraphs rounds.
 
 ## Setup
 
@@ -59,9 +70,12 @@ Roster lives in `lib/defaultRoster.ts` — one object per hitter. To add a playe
 
 - **mlbamId**: search `statsapi.mlb.com/api/v1/people/search?names=<first>%20<last>`
   in a browser, or find it in a Baseball Savant URL
-  (`baseballsavant.mlb.com/savant-player/<slug>-<mlbamId>`).
-- **fangraphsId**: find the player's FanGraphs page, the ID is the number in the URL
-  (`fangraphs.com/players/<slug>/<fangraphsId>/stats`).
+  (`baseballsavant.mlb.com/savant-player/<slug>-<mlbamId>`). This is the only ID
+  the app actually needs now — it drives both the schedule/pitcher matching and
+  the splits pull.
+- **fangraphsId**: no longer used by the app's data pulls (splits now come from
+  MLB's API), but left in the roster config as a handy reference link if you
+  want to manually check a player's FanGraphs page.
 - **mlbTeamId**: use the `MLB_TEAM_IDS` map already in `defaultRoster.ts`.
 
 Entries marked `/* VERIFY */` in the current roster were not confirmed live —

@@ -38,9 +38,9 @@ export interface TodaysMatchup {
   isHome: boolean;
 }
 
-// Computed split line for one hitter vs one hand.
+// Computed split line for one hitter vs one hand (or one date range).
 export interface SplitLine {
-  fangraphsId: number;
+  mlbamId: number;
   PA: number;
   AB: number;
   OBP: number | null;
