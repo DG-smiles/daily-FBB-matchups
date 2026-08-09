@@ -206,51 +206,14 @@ button.secondary {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
-  margin: 0 0 10px;
+  margin: 0 0 2px;
 }
 
-.slot-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.slot-row:last-child {
-  border-bottom: none;
-}
-
-.slot-label {
-  font-family: var(--font-mono);
+.decision-section-subtitle {
   font-size: 12px;
   color: var(--muted);
-  width: 34px;
-  flex-shrink: 0;
-}
-
-.slot-player {
-  min-width: 0;
-  flex: 1;
-}
-
-.slot-player-name {
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.slot-player-meta {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--muted);
-}
-
-.slot-empty {
-  color: var(--warn);
-  font-size: 13px;
-  font-style: italic;
-  flex: 1;
+  opacity: 0.75;
+  margin-bottom: 10px;
 }
 
 .warning-banner {
@@ -266,35 +229,6 @@ button.secondary {
 
 .warning-banner strong {
   color: var(--warn);
-}
-
-.bench-toggle,
-.grid-toggle {
-  margin-top: 10px;
-}
-
-.bench-toggle summary,
-.grid-toggle summary {
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  padding: 6px 0;
-}
-
-.bench-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 13px;
-}
-
-.bench-row:last-child {
-  border-bottom: none;
 }
 
 .excluded-row {
@@ -317,4 +251,93 @@ button.secondary {
 .excluded-badge.il {
   background: rgba(224, 166, 58, 0.18);
   color: var(--warn);
+}
+
+/* Per-row expand — every bench/lineup row is a <details> that drops down
+   the same note + breakdown a card in the old separate data grid used to
+   show, reusing .player-meta / .breakdown / .breakdown-row etc. verbatim. */
+
+.rec-row {
+  border-bottom: 1px solid var(--line);
+}
+
+.rec-row:last-child {
+  border-bottom: none;
+}
+
+.rec-row-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.slot-empty {
+  color: var(--warn);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.rec-row summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.rec-row summary::-webkit-details-marker {
+  display: none;
+}
+
+.rec-row-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.rec-row-slot {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+  width: 30px;
+  flex-shrink: 0;
+}
+
+.rec-row-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.rec-row-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.rec-row-note {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+.rec-row-chevron {
+  font-family: var(--font-mono);
+  color: var(--muted);
+  font-size: 13px;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.rec-row[open] .rec-row-chevron {
+  transform: rotate(90deg);
+}
+
+.rec-row-detail {
+  padding: 0 0 14px 40px;
+}
+
+.rec-row-detail .player-meta {
+  margin-bottom: 4px;
+}
+
+.rec-row-detail .breakdown {
+  margin-top: 8px;
 }

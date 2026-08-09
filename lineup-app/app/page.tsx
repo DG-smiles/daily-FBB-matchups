@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { defaultRoster } from "@/lib/defaultRoster";
-import { buildRecommendations, sitSortKey, sitTagClass } from "@/lib/recommend";
+import { buildRecommendations, sitSortKey } from "@/lib/recommend";
 import { resolveOpponent, ResolvedPlayerStatus } from "@/lib/mlb";
 import { assignLineup, LineupAssignmentResult } from "@/lib/assignLineup";
 import { LineupDecisionView, ExcludedPlayer } from "@/components/LineupDecisionView";
@@ -178,58 +178,6 @@ export default function Page() {
       )}
 
       {lineup && <LineupDecisionView assignment={lineup} excluded={excluded} />}
-
-      {recs && (
-        <details className="grid-toggle">
-          <summary>Full data grid — expand for per-hitter breakdown ({recs.length})</summary>
-          {recs.map((rec) => (
-            <RecCard key={rec.player.id} rec={rec} />
-          ))}
-        </details>
-      )}
-    </div>
-  );
-}
-
-function RecCard({ rec }: { rec: LineupRecommendation }) {
-  return (
-    <div className="card">
-      <div className="card-head">
-        <div>
-          <div className="player-name">{rec.player.name}</div>
-          <div className="player-meta">
-            {rec.player.mlbTeamAbbrev} · {rec.player.eligiblePositions.join("/")} · bats{" "}
-            {rec.player.bats}
-          </div>
-        </div>
-        {rec.sitScore != null && (
-          <div className={`ops-tag ${sitTagClass(rec.sitScore)}`}>SIT: {rec.sitScore}</div>
-        )}
-      </div>
-
-      <div className="note">{rec.note}</div>
-
-      <div className="breakdown">
-        {rec.sitBreakdown.map((c) => (
-          <div className="breakdown-row" key={c.label}>
-            <span className="breakdown-label">{c.label}</span>
-            <span className="breakdown-value">
-              {c.ops != null ? c.ops.toFixed(3) + " OPS" : "no data"}
-              {c.pa > 0 && <span className="breakdown-pa"> ({c.pa} PA)</span>}
-            </span>
-            <span className="breakdown-weight">{Math.round(c.effectiveWeight * 100)}% wt</span>
-          </div>
-        ))}
-        {(rec.sbBonus.sb > 0 || rec.sbBonus.cs > 0) && (
-          <div className="breakdown-row">
-            <span className="breakdown-label">SB Bonus (30d)</span>
-            <span className="breakdown-value">
-              {rec.sbBonus.sb} SB, {rec.sbBonus.cs} CS
-            </span>
-            <span className="breakdown-weight">-{rec.sbBonus.pointsOff} SIT</span>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

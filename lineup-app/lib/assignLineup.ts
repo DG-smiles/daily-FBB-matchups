@@ -217,9 +217,12 @@ export function assignLineup(recs: LineupRecommendation[]): LineupAssignmentResu
   });
 
   const benchFromCandidates = candidates.filter((_, idx) => !assignedIdx.has(idx));
-  const bench = [...benchFromCandidates, ...scorelessBench].sort(
-    (a, b) => (a.sitScore ?? 50) - (b.sitScore ?? 50)
-  );
+  // Worst matchup first (SIT desc) — the point is to clear the obvious sits
+  // fast, then work down toward the closer calls. Off-day / no-data players
+  // aren't really part of that judgment call, so they go after the scored
+  // group rather than mixed in at some arbitrary "middle" score.
+  benchFromCandidates.sort((a, b) => (b.sitScore as number) - (a.sitScore as number));
+  const bench = [...benchFromCandidates, ...scorelessBench];
 
   // "Absolute highest SIT score of the day" is measured against the whole
   // scoreable pool (not just starters), per spec.
