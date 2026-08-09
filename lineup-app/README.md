@@ -38,6 +38,8 @@ where it did.
 
 ## Total network calls per pull
 
+- 1 per **distinct MLB team** in your roster pool, for live roster status
+  (`rosterType=40Man`) — usually ~13-15, not one per player.
 - 1 to MLB for the day's schedule + all probable pitchers' hands (batched).
 - 3 per active hitter (season platoon split, 30-day form, 10-day form) — 17
   hitters ≈ 51 calls.
@@ -140,16 +142,32 @@ rosters on the same deployment. Two ways to extend this:
   players in-browser instead of editing the TypeScript file directly. Happy to
   build that next if you want it.
 
-## How the recommendation works
+## How a daily pull works, end to end
 
-For each active hitter (IL/NA excluded):
-1. Look up today's opponent + probable pitcher from the schedule.
-2. Pull that hitter's season OPS against the pitcher's throwing hand (switch
-   hitters use the hand opposite the pitcher, per your original spec).
-3. Pull trailing-30-day OPS as a secondary "hot/cold" signal.
-4. Sort by `0.7 × season-vs-hand OPS + 0.3 × recent OPS` (weights are in
-   `lib/recommend.ts` — `recommendationScore()` — tune freely).
+On "Pull today's lineup":
 
-This doesn't yet enforce your 13-active-slot / position-eligibility rules — it's
-a ranked list, not an auto-filled lineup. That's the natural next feature if you
-want to keep building this out.
+1. **Live roster status** (`/api/roster-status` → `lib/mlb.ts`,
+   `getRosterStatuses`) — pulls the 40-man roster for every distinct MLB team
+   in your pool and resolves each player's current status (active / IL / NA)
+   fresh, right then. This is what catches a player landing on the IL the
+   morning of games, or coming off it, without anyone hand-editing
+   `defaultRoster.ts`. The hardcoded `status` field there is only a
+   same-day-offline fallback.
+2. **Schedule + probable pitchers** (`/api/schedule`), same as before.
+3. **SIT scores** (`/api/splits` → `lib/recommend.ts`) for every player the
+   live status check just confirmed is active — see the scoring table above.
+4. **Lineup assignment** (`lib/assignLineup.ts`) — fills all 13 active slots
+   from the day's scored, active hitters, minimizing total SIT score across
+   the filled slots via the Hungarian algorithm (optimal min-cost bipartite
+   matching, not greedy sorting — this guarantees every slot gets filled
+   whenever a valid assignment exists, even when a scarce position's only
+   eligible player would otherwise get grabbed by a flex slot first).
+   Deliberately doesn't weight by position scarcity — every slot's cost is
+   just the player's SIT score. If the single highest SIT score in the whole
+   pool ends up starting anyway (no better option existed for their slot), a
+   warning banner says so.
+
+The result renders as a clean decision view (`components/LineupDecisionView.tsx`)
+at the top of the page — who starts where, who's benched, who's excluded and
+why. The full per-hitter SIT breakdown (`RecCard` in `app/page.tsx`) is still
+there underneath, behind an expand toggle, unchanged.

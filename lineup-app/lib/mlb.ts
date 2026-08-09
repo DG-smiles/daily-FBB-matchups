@@ -79,6 +79,78 @@ async function getPitchHands(personIds: number[]): Promise<Record<number, Hand>>
   return out;
 }
 
+export type RosterStatus = "active" | "IL" | "NA";
+
+export interface ResolvedPlayerStatus {
+  status: RosterStatus;
+  statusCode: string; // raw code from the API, e.g. "A", "D10", "D60"
+  statusDescription: string; // raw description, e.g. "Active", "Injured List - 10-Day"
+}
+
+interface FortyManRosterEntry {
+  person: { id: number };
+  status: { code: string; description: string };
+}
+
+// Status codes that represent some form of injured list. If a code shows up
+// in the wild that isn't classified correctly, ResolvedPlayerStatus carries
+// the raw statusCode/statusDescription so it's visible rather than guessed.
+const IL_STATUS_CODES = new Set([
+  "D7", // 7-day IL (concussion protocol)
+  "D10", // 10-day IL
+  "D15", // 15-day IL
+  "D60", // 60-day IL
+]);
+
+/**
+ * Resolves each given player's CURRENT roster status (active/IL/NA), fresh
+ * at request time — this is what catches a player landing on the IL the
+ * morning of games, or coming off it, without hand-editing defaultRoster.ts.
+ *
+ * Uses rosterType=40Man rather than the default "active" roster type: the
+ * default active-roster view can simply omit IL players instead of showing
+ * their status, so 40Man is needed to keep them visible and classifiable.
+ * Batches one request per distinct MLB team, not per player.
+ */
+export async function getRosterStatuses(
+  players: { mlbamId: number; mlbTeamId: number }[]
+): Promise<Record<number, ResolvedPlayerStatus>> {
+  const teamIds = Array.from(new Set(players.map((p) => p.mlbTeamId)));
+
+  const rostersByTeam = await Promise.all(
+    teamIds.map(async (teamId) => {
+      const url = `${MLB_BASE}/teams/${teamId}/roster?rosterType=40Man`;
+      const res = await fetch(url, { next: { revalidate: 0 } });
+      if (!res.ok) {
+        throw new Error(`MLB roster request failed for team ${teamId}: ${res.status}`);
+      }
+      const data = await res.json();
+      return (data.roster ?? []) as FortyManRosterEntry[];
+    })
+  );
+
+  const byPersonId = new Map<number, ResolvedPlayerStatus>();
+  for (const roster of rostersByTeam) {
+    for (const entry of roster) {
+      const code = entry.status?.code ?? "UNK";
+      const description = entry.status?.description ?? "Unknown";
+      const status: RosterStatus =
+        code === "A" ? "active" : IL_STATUS_CODES.has(code) ? "IL" : "NA";
+      byPersonId.set(entry.person.id, { status, statusCode: code, statusDescription: description });
+    }
+  }
+
+  const out: Record<number, ResolvedPlayerStatus> = {};
+  for (const p of players) {
+    out[p.mlbamId] = byPersonId.get(p.mlbamId) ?? {
+      status: "NA",
+      statusCode: "NOT_ON_40MAN",
+      statusDescription: "Not found on club's 40-man roster today",
+    };
+  }
+  return out;
+}
+
 /** Find a hitter's opponent + probable pitcher for today from the schedule. */
 export function resolveOpponent(
   games: ScheduleGame[],

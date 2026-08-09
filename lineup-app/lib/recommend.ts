@@ -183,3 +183,12 @@ export function buildRecommendations(
 export function sitSortKey(rec: LineupRecommendation): number {
   return rec.sitScore ?? 50; // unknowns sort to the middle, not top or bottom
 }
+
+/** Shared "good/bad" tag class for displaying a SIT score — used by both the
+ * detail grid and the lineup decision view, so the thresholds live in one place. */
+export function sitTagClass(sit: number | null): string {
+  if (sit == null) return "";
+  if (sit <= 35) return "good"; // low SIT = good matchup = green
+  if (sit >= 65) return "bad";
+  return "";
+}

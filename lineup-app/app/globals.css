@@ -189,3 +189,132 @@ button.secondary {
   color: var(--accent-dim);
   white-space: nowrap;
 }
+
+/* Lineup decision view */
+
+.decision-panel {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+
+.decision-section-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+.slot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.slot-row:last-child {
+  border-bottom: none;
+}
+
+.slot-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+  width: 34px;
+  flex-shrink: 0;
+}
+
+.slot-player {
+  min-width: 0;
+  flex: 1;
+}
+
+.slot-player-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.slot-player-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.slot-empty {
+  color: var(--warn);
+  font-size: 13px;
+  font-style: italic;
+  flex: 1;
+}
+
+.warning-banner {
+  border: 1px solid var(--warn);
+  background: rgba(224, 166, 58, 0.12);
+  color: var(--bright);
+  padding: 12px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.warning-banner strong {
+  color: var(--warn);
+}
+
+.bench-toggle,
+.grid-toggle {
+  margin-top: 10px;
+}
+
+.bench-toggle summary,
+.grid-toggle summary {
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 6px 0;
+}
+
+.bench-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.bench-row:last-child {
+  border-bottom: none;
+}
+
+.excluded-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.excluded-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--line);
+}
+
+.excluded-badge.il {
+  background: rgba(224, 166, 58, 0.18);
+  color: var(--warn);
+}

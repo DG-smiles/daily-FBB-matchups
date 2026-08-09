@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { defaultRoster } from "@/lib/defaultRoster";
-import { buildRecommendations, sitSortKey } from "@/lib/recommend";
-import { resolveOpponent } from "@/lib/mlb";
-import { LineupRecommendation, ScheduleGame, SplitLine } from "@/lib/types";
+import { buildRecommendations, sitSortKey, sitTagClass } from "@/lib/recommend";
+import { resolveOpponent, ResolvedPlayerStatus } from "@/lib/mlb";
+import { assignLineup, LineupAssignmentResult } from "@/lib/assignLineup";
+import { LineupDecisionView, ExcludedPlayer } from "@/components/LineupDecisionView";
+import { LineupRecommendation, Player, ScheduleGame, SplitLine } from "@/lib/types";
 
 function todayISO(): string {
   // Use local date components, not toISOString() (which is UTC and can
@@ -22,22 +24,57 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null);
   const [recs, setRecs] = useState<LineupRecommendation[] | null>(null);
   const [splitErrors, setSplitErrors] = useState<Record<string, string> | null>(null);
+  const [lineup, setLineup] = useState<LineupAssignmentResult | null>(null);
+  const [excluded, setExcluded] = useState<ExcludedPlayer[]>([]);
 
   async function pullLineup() {
     setLoading(true);
     setError(null);
     setRecs(null);
     setSplitErrors(null);
+    setLineup(null);
+    setExcluded([]);
     try {
       const season = new Date(date).getFullYear();
 
-      // Call 1: schedule + probable pitchers for every team playing today.
-      const scheduleRes = await fetch(`/api/schedule?date=${date}`);
+      // Call 1a + 1b, in parallel: today's schedule, and fresh active/IL/NA
+      // status for every rostered player — this is what catches a same-day
+      // IL move or activation (e.g. Buxton coming off IL) without anyone
+      // hand-editing defaultRoster.ts.
+      const [scheduleRes, statusRes] = await Promise.all([
+        fetch(`/api/schedule?date=${date}`),
+        fetch(`/api/roster-status`),
+      ]);
+
       const scheduleJson = await scheduleRes.json();
       if (!scheduleRes.ok) throw new Error(scheduleJson.error ?? "Schedule fetch failed");
       const games: ScheduleGame[] = scheduleJson.games;
 
-      const activeRoster = defaultRoster.filter((p) => p.status !== "IL" && p.status !== "NA");
+      const statusJson = await statusRes.json();
+      if (!statusRes.ok) throw new Error(statusJson.error ?? "Roster status fetch failed");
+      const statuses: Record<number, ResolvedPlayerStatus> = statusJson.statuses;
+
+      // Freshly-resolved status is now the source of truth for who's active
+      // today — the hardcoded `status` field in defaultRoster.ts is only a
+      // same-day-offline fallback (used if a player's mlbamId is unverified
+      // and couldn't be looked up).
+      const resolvedRoster: Player[] = defaultRoster.map((p) => ({
+        ...p,
+        status: statuses[p.mlbamId]?.status ?? p.status,
+      }));
+
+      setExcluded(
+        resolvedRoster
+          .filter((p) => p.status === "IL" || p.status === "NA")
+          .map((p) => ({
+            player: p,
+            reason: p.status as "IL" | "NA",
+            statusDescription:
+              statuses[p.mlbamId]?.statusDescription ?? "Not on active MLB roster",
+          }))
+      );
+
+      const activeRoster = resolvedRoster.filter((p) => p.status !== "IL" && p.status !== "NA");
       const mlbamIds = activeRoster.map((p) => p.mlbamId);
 
       // Resolve each hitter's opponent pitcher up front so we know which
@@ -75,7 +112,7 @@ export default function Page() {
       }
 
       const built = buildRecommendations(
-        defaultRoster,
+        resolvedRoster,
         games,
         vsL,
         vsR,
@@ -86,6 +123,7 @@ export default function Page() {
       );
       built.sort((a, b) => sitSortKey(a) - sitSortKey(b));
       setRecs(built);
+      setLineup(assignLineup(built));
     } catch (e: any) {
       setError(e.message ?? "Something went wrong.");
     } finally {
@@ -139,18 +177,18 @@ export default function Page() {
         </div>
       )}
 
-      {recs?.map((rec) => (
-        <RecCard key={rec.player.id} rec={rec} />
-      ))}
+      {lineup && <LineupDecisionView assignment={lineup} excluded={excluded} />}
+
+      {recs && (
+        <details className="grid-toggle">
+          <summary>Full data grid — expand for per-hitter breakdown ({recs.length})</summary>
+          {recs.map((rec) => (
+            <RecCard key={rec.player.id} rec={rec} />
+          ))}
+        </details>
+      )}
     </div>
   );
-}
-
-function sitTagClass(sit: number | null): string {
-  if (sit == null) return "";
-  if (sit <= 35) return "good"; // low SIT = good matchup = green
-  if (sit >= 65) return "bad";
-  return "";
 }
 
 function RecCard({ rec }: { rec: LineupRecommendation }) {

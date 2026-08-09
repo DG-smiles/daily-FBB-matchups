@@ -91,7 +91,13 @@ export const defaultRoster: Player[] = [
     id: "spencer-horwitz", name: "S. Horwitz", mlbTeamId: MLB_TEAM_IDS.PIT, mlbTeamAbbrev: "PIT",
     eligiblePositions: ["1B"], bats: "L", mlbamId: 687462, fangraphsId: 26477,
   },
-  // IL / NA — excluded from daily lineup decisions but kept here for roster completeness.
+  // IL / NA — these `status` values are only a same-day-offline fallback now.
+  // On every "Pull today's lineup," app/page.tsx overwrites `status` for every
+  // player with a live lookup from /api/roster-status (lib/mlb.ts,
+  // getRosterStatuses) before anything is scored or assigned to a slot — so a
+  // player landing on the IL, or coming off it, the morning of games is
+  // caught automatically without editing this file. These hardcoded values
+  // only matter if that live lookup fails.
   {
     id: "byron-buxton", name: "B. Buxton", mlbTeamId: MLB_TEAM_IDS.MIN, mlbTeamAbbrev: "MIN",
     eligiblePositions: ["CF"], bats: "R", mlbamId: 621439, fangraphsId: 14161, status: "IL",
