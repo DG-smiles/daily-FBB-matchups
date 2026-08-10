@@ -156,10 +156,6 @@ link in the app if a device needs to change who it's showing. This part
 still needs a commit + redeploy (it's a one-time-per-friend thing); the
 players *within* a roster are what add/drop manages without a redeploy.
 
-Rename `"you"` → your own name/id whenever you get a chance, so you show up
-in the picker the same way everyone else does — nothing depends on that key
-being literally `"you"`.
-
 ## Adding/dropping players in-app
 
 "Manage roster" (next to your name in the app) opens a screen backed by
@@ -190,7 +186,7 @@ To hand-edit a player's entry (in `lib/rosters.json`, or a live Blob copy):
   want to manually check a player's FanGraphs page. `0` if you don't have it.
 - **mlbTeamId**: use the `MLB_TEAM_IDS` map in `lib/mlbTeams.ts`.
 
-A few entries in the seeded `"you"` roster were marked "not confirmed live"
+A few entries in the seeded `"daniel-g"` roster were marked "not confirmed live"
 when this was originally built without internet access — worth double
 checking `bats` for Max Clark and Cole Young, and `bats`/`mlbamId`/`fangraphsId`
 for Walker Jenkins, against FanGraphs/MLB.com before trusting their split data.

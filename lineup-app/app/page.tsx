@@ -235,12 +235,14 @@ export default function Page() {
       <div className="identity-line">
         {displayName}
         {" · "}
-        <button className="switch-link" onClick={() => setShowManager((v) => !v)}>
-          {showManager ? "Hide roster management" : "Manage roster"}
-        </button>
-        {" · "}
         <button className="switch-link" onClick={switchRoster}>
           Not you? Switch
+        </button>
+      </div>
+
+      <div className="manage-roster-row">
+        <button className="secondary" onClick={() => setShowManager((v) => !v)}>
+          {showManager ? "Hide roster management" : "Manage roster"}
         </button>
       </div>
 

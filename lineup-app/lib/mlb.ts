@@ -88,9 +88,14 @@ import { UniversePlayer } from "./types";
  * so the roster entry reflects today's team/position rather than a
  * potentially-stale cached universe snapshot. Same shape as UniversePlayer,
  * just resolved for one player instead of the whole pool.
+ *
+ * hydrate=currentTeam is required here — the bare /people/{id} call does
+ * NOT include currentTeam by default (confirmed against MLB's own People
+ * endpoint behavior), which without this was silently returning null for
+ * every player added, regardless of who they were.
  */
 export async function getPlayerInfo(mlbamId: number): Promise<UniversePlayer | null> {
-  const url = `${MLB_BASE}/people/${mlbamId}`;
+  const url = `${MLB_BASE}/people/${mlbamId}?hydrate=currentTeam`;
   const res = await fetch(url, { next: { revalidate: 0 } });
   if (!res.ok) {
     throw new Error(`MLB people request failed: ${res.status}`);

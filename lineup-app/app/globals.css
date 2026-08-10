@@ -387,6 +387,14 @@ button.secondary {
   color: var(--accent);
 }
 
+.manage-roster-row {
+  margin-bottom: 20px;
+}
+
+.manage-roster-row button {
+  width: 100%;
+}
+
 /* Roster manager — drop current players, search + add new ones */
 
 .roster-manage-list {
@@ -449,18 +457,4 @@ button.secondary {
 
 .roster-error {
   color: var(--warn);
-}
-
-.roster-caveat {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
-  font-size: 12px;
-}
-
-.roster-caveat code {
-  font-family: var(--font-mono);
-  background: var(--line);
-  padding: 1px 5px;
-  border-radius: 4px;
 }

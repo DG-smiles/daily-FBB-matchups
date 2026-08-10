@@ -1,6 +1,6 @@
 {
-  "you": {
-    "displayName": "You",
+  "daniel-g": {
+    "displayName": "Daniel G",
     "players": [
       { "id": "riley-greene", "name": "R. Greene", "mlbTeamId": 116, "mlbTeamAbbrev": "DET", "eligiblePositions": ["LF", "CF", "RF"], "bats": "L", "mlbamId": 682985, "fangraphsId": 25976 },
       { "id": "heliot-ramos", "name": "H. Ramos", "mlbTeamId": 147, "mlbTeamAbbrev": "NYY", "eligiblePositions": ["LF", "CF", "RF"], "bats": "R", "mlbamId": 671218, "fangraphsId": 22515 },

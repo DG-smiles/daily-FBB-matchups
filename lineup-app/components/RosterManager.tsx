@@ -9,7 +9,7 @@ interface RosterManagerProps {
   onRosterChange: (players: Player[]) => void;
 }
 
-const MAX_RESULTS = 25;
+const MAX_RESULTS = 6;
 
 export function RosterManager({ userId, roster, onRosterChange }: RosterManagerProps) {
   const [universe, setUniverse] = useState<UniversePlayer[] | null>(null);
@@ -65,7 +65,7 @@ export function RosterManager({ userId, roster, onRosterChange }: RosterManagerP
   }
 
   async function handleDrop(playerId: string, playerName: string) {
-    if (!window.confirm(`Drop ${playerName}? This can't be undone.`)) return;
+    if (!window.confirm(`Drop ${playerName}?`)) return;
     setActionError(null);
     setPendingId(playerId);
     try {
@@ -144,12 +144,6 @@ export function RosterManager({ userId, roster, onRosterChange }: RosterManagerP
           ))}
         </div>
       )}
-
-      <div className="note roster-caveat">
-        Positions here are MLB&apos;s single &quot;primary position,&quot; not full multi-slot
-        fantasy eligibility — add extra eligible positions by hand in <code>lib/rosters.json</code>{" "}
-        if your real league has someone qualified at more than one.
-      </div>
     </div>
   );
 }
