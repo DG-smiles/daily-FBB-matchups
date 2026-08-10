@@ -22,5 +22,29 @@
       { "id": "byron-buxton", "name": "B. Buxton", "mlbTeamId": 142, "mlbTeamAbbrev": "MIN", "eligiblePositions": ["CF"], "bats": "R", "mlbamId": 621439, "fangraphsId": 14161, "status": "IL" },
       { "id": "walker-jenkins", "name": "W. Jenkins", "mlbTeamId": 142, "mlbTeamAbbrev": "MIN", "eligiblePositions": ["LF", "CF", "RF"], "bats": "L", "mlbamId": 0, "fangraphsId": 0, "status": "NA" }
     ]
+  },
+  "matt-r": {
+    "displayName": "Matt R",
+    "players": []
+  },
+  "mark-n": {
+    "displayName": "Mark N",
+    "players": []
+  },
+  "steven-n": {
+    "displayName": "Steven N",
+    "players": []
+  },
+  "daniel-k": {
+    "displayName": "Daniel K",
+    "players": []
+  },
+  "curt-r": {
+    "displayName": "Curt R",
+    "players": []
+  },
+  "steve-h": {
+    "displayName": "Steve H",
+    "players": []
   }
 }
