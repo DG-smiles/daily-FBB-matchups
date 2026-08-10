@@ -15,6 +15,13 @@ import { getRoster as getSeedRoster } from "./rosters";
  * players. The live, mutated player list — once anyone has ever added or
  * dropped a player — lives in Blob instead, one blob per person.
  *
+ * IMPORTANT: Vercel's CDN caches blob content by URL for up to a month by
+ * default, and does not automatically invalidate that cache when you
+ * overwrite the same pathname (`allowOverwrite: true` replaces the content,
+ * not the cache). Every read here cache-busts with a unique query param to
+ * guarantee freshness — don't fetch `meta.url` directly elsewhere without
+ * doing the same, or you'll silently get stale roster data back.
+ *
  * SETUP: in the Vercel dashboard, go to your project → Storage → Create
  * Database → Blob, and connect it to this project. Vercel adds the
  * BLOB_READ_WRITE_TOKEN environment variable automatically — nothing to
@@ -43,7 +50,16 @@ export async function getLiveRoster(userId: string): Promise<Player[] | null> {
 
   try {
     const meta = await head(blobPath(userId));
-    const res = await fetch(meta.url, { cache: "no-store" });
+    // Vercel's CDN caches blob content by URL for up to a month by default
+    // — re-fetching the same stable pathname after an overwrite can keep
+    // serving the pre-write version for a while (this was the actual bug:
+    // an add/drop was writing successfully, but reads kept getting the old
+    // cached copy). A unique query param makes every read resolve to a URL
+    // the CDN has never cached, which is Vercel's own documented fix for
+    // this. `cache: "no-store"` alone only bypasses Next's own data cache,
+    // not this CDN layer, which is why it wasn't enough on its own.
+    const bustUrl = `${meta.url}?v=${Date.now()}`;
+    const res = await fetch(bustUrl, { cache: "no-store" });
     if (res.ok) {
       const data = (await res.json()) as StoredRoster;
       return data.players;
@@ -66,6 +82,11 @@ async function writeLiveRoster(
     contentType: "application/json",
     addRandomSuffix: false,
     allowOverwrite: true,
+    // Belt-and-suspenders alongside the cache-busted reads above: bounds
+    // the CDN's own cache window to the minimum Vercel allows (default is
+    // up to a month otherwise), in case anything ever reads meta.url
+    // directly without busting it.
+    cacheControlMaxAge: 60,
   });
 }
 

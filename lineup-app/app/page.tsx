@@ -195,6 +195,18 @@ export default function Page() {
     }
   }
 
+  function handleRosterChange(updated: Player[]) {
+    setRoster(updated);
+    // A roster edit can resolve (or change) whatever the last pull attempt
+    // ran into — don't leave a stale error/lineup sitting on screen after
+    // the thing that caused it just changed.
+    setError(null);
+    setRecs(null);
+    setLineup(null);
+    setExcluded([]);
+    setSplitErrors(null);
+  }
+
   if (viewState === "loading") {
     return <div className="wrap" />;
   }
@@ -247,7 +259,7 @@ export default function Page() {
       </div>
 
       {showManager && roster && (
-        <RosterManager userId={userId!} roster={roster} onRosterChange={setRoster} />
+        <RosterManager userId={userId!} roster={roster} onRosterChange={handleRosterChange} />
       )}
 
       <div className="controls">
