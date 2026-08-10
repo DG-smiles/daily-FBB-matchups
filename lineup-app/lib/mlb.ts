@@ -79,6 +79,35 @@ async function getPitchHands(personIds: number[]): Promise<Record<number, Hand>>
   return out;
 }
 
+import { TEAM_ABBREV_BY_ID } from "./mlbTeams";
+import { UniversePlayer } from "./types";
+
+/**
+ * Resolves one player's current team/position/bat-side fresh by mlbamId —
+ * used when adding a player from the hitter-universe search (/api/players),
+ * so the roster entry reflects today's team/position rather than a
+ * potentially-stale cached universe snapshot. Same shape as UniversePlayer,
+ * just resolved for one player instead of the whole pool.
+ */
+export async function getPlayerInfo(mlbamId: number): Promise<UniversePlayer | null> {
+  const url = `${MLB_BASE}/people/${mlbamId}`;
+  const res = await fetch(url, { next: { revalidate: 0 } });
+  if (!res.ok) {
+    throw new Error(`MLB people request failed: ${res.status}`);
+  }
+  const data = await res.json();
+  const person = (data.people ?? [])[0];
+  if (!person || !person.currentTeam?.id) return null;
+  return {
+    mlbamId: person.id,
+    name: person.fullName,
+    mlbTeamId: person.currentTeam.id,
+    mlbTeamAbbrev: TEAM_ABBREV_BY_ID[person.currentTeam.id] ?? person.currentTeam.name ?? "?",
+    position: person.primaryPosition?.abbreviation ?? "UTIL",
+    bats: (person.batSide?.code as UniversePlayer["bats"]) ?? null,
+  };
+}
+
 export type RosterStatus = "active" | "IL" | "NA";
 
 export interface ResolvedPlayerStatus {
@@ -105,7 +134,7 @@ const IL_STATUS_CODES = new Set([
 /**
  * Resolves each given player's CURRENT roster status (active/IL/NA), fresh
  * at request time — this is what catches a player landing on the IL the
- * morning of games, or coming off it, without hand-editing defaultRoster.ts.
+ * morning of games, or coming off it, without hand-editing rosters.json.
  *
  * Uses rosterType=40Man rather than the default "active" roster type: the
  * default active-roster view can simply omit IL players instead of showing

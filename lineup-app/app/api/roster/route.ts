@@ -1,21 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { defaultRoster } from "@/lib/defaultRoster";
-import { checkOwnerKey } from "@/lib/auth";
+import { getLiveRoster } from "@/lib/rosterStore";
 
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/roster
+ * GET /api/roster?user=<id>
  *
- * Returns the hardcoded roster — but only to a request carrying the correct
- * x-owner-key header. Unlike a client-side "hide this in the UI" check, this
- * is the actual boundary: app/page.tsx no longer imports defaultRoster.ts
- * directly (that would ship every player's name into the JS bundle for
- * anyone who loads the page, regardless of what's rendered on screen). This
- * route is now the only path the roster data takes to a browser.
+ * One person's current roster — the live Blob copy if they've ever
+ * added/dropped a player, otherwise the seed data from lib/rosters.json.
+ * No access check — rosters aren't secret (see lib/rosters.json) — this
+ * just keeps player data out of the client bundle for anyone who *hasn't*
+ * picked a roster yet, and lets the whole friend group share one deployment.
  */
 export async function GET(req: NextRequest) {
-  const denied = checkOwnerKey(req);
-  if (denied) return denied;
-  return NextResponse.json({ roster: defaultRoster });
+  const userId = req.nextUrl.searchParams.get("user");
+  if (!userId) {
+    return NextResponse.json({ error: "Missing ?user=<id>" }, { status: 400 });
+  }
+  const players = await getLiveRoster(userId);
+  if (!players) {
+    return NextResponse.json({ error: `No roster found for "${userId}"` }, { status: 404 });
+  }
+  return NextResponse.json({ roster: players });
 }

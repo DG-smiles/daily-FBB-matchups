@@ -5,9 +5,11 @@ import { buildRecommendations, sitSortKey } from "@/lib/recommend";
 import { resolveOpponent, ResolvedPlayerStatus } from "@/lib/mlb";
 import { assignLineup, LineupAssignmentResult } from "@/lib/assignLineup";
 import { LineupDecisionView, ExcludedPlayer } from "@/components/LineupDecisionView";
+import { RosterManager } from "@/components/RosterManager";
+import { RosterSummary } from "@/lib/rosters";
 import { LineupRecommendation, Player, ScheduleGame, SplitLine } from "@/lib/types";
 
-const OWNER_KEY_STORAGE = "lineupOwnerKey";
+const USER_ID_STORAGE = "lineupUserId";
 
 function todayISO(): string {
   // Use local date components, not toISOString() (which is UTC and can
@@ -19,12 +21,15 @@ function todayISO(): string {
   return `${year}-${month}-${day}`;
 }
 
-type AuthState = "checking" | "locked" | "unlocked";
+type ViewState = "loading" | "picker" | "ready";
 
 export default function Page() {
-  const [authState, setAuthState] = useState<AuthState>("checking");
-  const [ownerKey, setOwnerKey] = useState<string | null>(null);
+  const [viewState, setViewState] = useState<ViewState>("loading");
+  const [rosterList, setRosterList] = useState<RosterSummary[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
   const [roster, setRoster] = useState<Player[] | null>(null);
+  const [showManager, setShowManager] = useState(false);
 
   const [date, setDate] = useState(todayISO());
   const [loading, setLoading] = useState(false);
@@ -34,44 +39,59 @@ export default function Page() {
   const [lineup, setLineup] = useState<LineupAssignmentResult | null>(null);
   const [excluded, setExcluded] = useState<ExcludedPlayer[]>([]);
 
-  // One-time device unlock: a link visited once as ?key=<OWNER_ACCESS_KEY>
-  // gets that key stashed in localStorage, then this device never needs the
-  // link again. Without a valid key, the roster is never fetched — it's
-  // gated server-side in /api/roster, not just hidden in this UI. See
-  // lib/auth.ts for the server-side check and setup instructions.
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    const urlKey = url.searchParams.get("key");
-    const key = urlKey || window.localStorage.getItem(OWNER_KEY_STORAGE);
-
-    if (urlKey) {
-      window.localStorage.setItem(OWNER_KEY_STORAGE, urlKey);
-      url.searchParams.delete("key");
-      window.history.replaceState({}, "", url.toString());
-    }
-
-    if (!key) {
-      setAuthState("locked");
+  // Rosters aren't secret — this is just "which roster is mine," not a login.
+  // Pick once, remembered in localStorage on this device from then on. See
+  // README "Rosters" for how a friend's name gets added to lib/rosters.json.
+  async function selectRoster(id: string, list: RosterSummary[]) {
+    const res = await fetch(`/api/roster?user=${encodeURIComponent(id)}`);
+    if (!res.ok) {
+      window.localStorage.removeItem(USER_ID_STORAGE);
+      setViewState("picker");
       return;
     }
+    const json = await res.json();
+    const summary = list.find((r) => r.id === id);
+    window.localStorage.setItem(USER_ID_STORAGE, id);
+    setUserId(id);
+    setDisplayName(summary?.displayName ?? id);
+    setRoster(json.roster as Player[]);
+    setViewState("ready");
+  }
 
-    fetch("/api/roster", { headers: { "x-owner-key": key } })
-      .then(async (res) => {
-        if (!res.ok) {
-          window.localStorage.removeItem(OWNER_KEY_STORAGE);
-          setAuthState("locked");
-          return;
+  function switchRoster() {
+    window.localStorage.removeItem(USER_ID_STORAGE);
+    setUserId(null);
+    setDisplayName(null);
+    setRoster(null);
+    setShowManager(false);
+    setRecs(null);
+    setLineup(null);
+    setExcluded([]);
+    setSplitErrors(null);
+    setError(null);
+    setViewState("picker");
+  }
+
+  useEffect(() => {
+    fetch("/api/rosters")
+      .then((res) => res.json())
+      .then(async (json) => {
+        const list: RosterSummary[] = json.rosters ?? [];
+        setRosterList(list);
+
+        const storedId = window.localStorage.getItem(USER_ID_STORAGE);
+        if (storedId && list.some((r) => r.id === storedId)) {
+          await selectRoster(storedId, list);
+        } else {
+          setViewState("picker");
         }
-        const json = await res.json();
-        setOwnerKey(key);
-        setRoster(json.roster as Player[]);
-        setAuthState("unlocked");
       })
-      .catch(() => setAuthState("locked"));
+      .catch(() => setViewState("picker"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function pullLineup() {
-    if (!roster || !ownerKey) return;
+    if (!roster || !userId) return;
     setLoading(true);
     setError(null);
     setRecs(null);
@@ -84,10 +104,10 @@ export default function Page() {
       // Call 1a + 1b, in parallel: today's schedule, and fresh active/IL/NA
       // status for every rostered player — this is what catches a same-day
       // IL move or activation (e.g. Buxton coming off IL) without anyone
-      // hand-editing defaultRoster.ts.
+      // hand-editing lib/rosters.json.
       const [scheduleRes, statusRes] = await Promise.all([
         fetch(`/api/schedule?date=${date}`),
-        fetch(`/api/roster-status`, { headers: { "x-owner-key": ownerKey } }),
+        fetch(`/api/roster-status?user=${encodeURIComponent(userId)}`),
       ]);
 
       const scheduleJson = await scheduleRes.json();
@@ -99,7 +119,7 @@ export default function Page() {
       const statuses: Record<number, ResolvedPlayerStatus> = statusJson.statuses;
 
       // Freshly-resolved status is now the source of truth for who's active
-      // today — the hardcoded `status` field in defaultRoster.ts is only a
+      // today — the hardcoded `status` field in lib/rosters.json is only a
       // same-day-offline fallback (used if a player's mlbamId is unverified
       // and couldn't be looked up).
       const resolvedRoster: Player[] = roster.map((p) => ({
@@ -175,19 +195,34 @@ export default function Page() {
     }
   }
 
-  if (authState === "checking") {
+  if (viewState === "loading") {
     return <div className="wrap" />;
   }
 
-  if (authState === "locked") {
+  if (viewState === "picker") {
     return (
       <div className="wrap">
         <h1>Daily Lineup Analysis</h1>
         <div className="card">
-          <div className="note">
-            This device isn&apos;t linked to a roster yet. Open the link that was shared with
-            you to connect one.
+          <div className="card-head">
+            <div className="player-name">Who&apos;s this?</div>
           </div>
+          <div className="roster-picker-list">
+            {rosterList.map((r) => (
+              <button
+                key={r.id}
+                className="roster-picker-button"
+                onClick={() => selectRoster(r.id, rosterList)}
+              >
+                {r.displayName}
+              </button>
+            ))}
+          </div>
+          {rosterList.length === 0 && (
+            <div className="note">
+              No rosters configured yet — add one in lib/rosters.json (see README).
+            </div>
+          )}
         </div>
       </div>
     );
@@ -196,6 +231,22 @@ export default function Page() {
   return (
     <div className="wrap">
       <h1>Daily Lineup Analysis</h1>
+
+      <div className="identity-line">
+        {displayName}
+        {" · "}
+        <button className="switch-link" onClick={() => setShowManager((v) => !v)}>
+          {showManager ? "Hide roster management" : "Manage roster"}
+        </button>
+        {" · "}
+        <button className="switch-link" onClick={switchRoster}>
+          Not you? Switch
+        </button>
+      </div>
+
+      {showManager && roster && (
+        <RosterManager userId={userId!} roster={roster} onRosterChange={setRoster} />
+      )}
 
       <div className="controls">
         <input

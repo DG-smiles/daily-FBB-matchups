@@ -107,33 +107,78 @@ Open `http://localhost:3000`, pick a date, click "Pull today's lineup."
 
 1. Push this repo to GitHub.
 2. Go to [vercel.com/new](https://vercel.com/new), import the repo.
-3. In the project's Environment Variables, add `OWNER_ACCESS_KEY` — a long
-   random string, entered as a plain value (do **not** prefix it with
-   `NEXT_PUBLIC_`, or it ships to the browser and defeats the point). This
-   gates the roster — see "Roster access" below.
+3. In your project → **Storage** tab → **Create Database** → **Blob**, and
+   connect it to this project. This is what makes in-app add/drop actually
+   persist — see "Rosters" below for why a plain repo file can't. Vercel
+   adds the `BLOB_READ_WRITE_TOKEN` environment variable automatically;
+   nothing to copy/paste.
 4. Deploy.
-5. On your own phone, open `https://your-app.vercel.app/?key=<that string>`
-   once. That device now remembers it — don't reuse that link elsewhere; see
-   below.
+5. Share the URL with whoever's on the list in `lib/rosters.json`. First
+   visit, they tap their name once; it's remembered on their device after
+   that. See "Rosters" below.
 
-## Roster access (device gate)
+**Local dev:** run `vercel env pull` once to get `BLOB_READ_WRITE_TOKEN` into
+`.env.local`, or add/drop won't work on `localhost` (reading still will).
 
-The roster in `lib/defaultRoster.ts` is no longer bundled into the page for
-anyone who loads it — it's only served by `/api/roster` (and
-`/api/roster-status`) to a request carrying the correct `x-owner-key` header,
-checked server-side in `lib/auth.ts`. Visiting `?key=<OWNER_ACCESS_KEY>` once
-stores that key in the browser's `localStorage` and strips it from the URL;
-every request after that includes it automatically. A device that's never
-seen a valid key just sees "not linked to a roster yet" — no player names,
-no roster shape, nothing roster-specific ships to it at all.
+## Rosters
 
-This is a single shared secret, not real per-user login — it exists to stop
-a casually-shared app link from showing your specific roster before real
-accounts exist. See "Multi-user" below for where that's headed.
+Everyone's roster — yours and any friends' — starts from one place:
+`lib/rosters.json`, one entry per person, current-roster-only (no history).
+Nothing in here is secret or access-controlled; everyone's roster is visible
+to everyone else who opens the app, same as it would be in a real league.
 
-## Editing your roster
+**Reading vs. writing** — two different places, on purpose:
+- `lib/rosters.json` (this repo) is each person's *starting* roster, and the
+  id → display-name directory the "who's this?" picker uses. It's read-only
+  once deployed — a running Vercel function can't write back to a file
+  that's part of the deployed build.
+- Add/drop (`lib/rosterStore.ts`) writes to **Vercel Blob** instead — one
+  JSON blob per person, seeded from `rosters.json` the first time anyone
+  adds or drops for that person, live from then on. Still just a JSON blob,
+  not a real database — it's the smallest thing that's actually writable at
+  runtime. `/api/roster` and `/api/roster-status` both check Blob first and
+  fall back to the seed file, so reads always reflect the latest state.
 
-Roster lives in `lib/defaultRoster.ts` — one object per hitter. To add a player:
+**Adding a friend:** copy this block into `lib/rosters.json`, give it a short
+id key and their name, and start them with an empty roster (or seed a
+starting one using the same shape as the existing entries):
+
+```json
+"friend-id": {
+  "displayName": "Their Name",
+  "players": []
+}
+```
+
+They open the app link, tap their name once, and from then on their device
+remembers it automatically — same as yours does. There's a "Not you? Switch"
+link in the app if a device needs to change who it's showing. This part
+still needs a commit + redeploy (it's a one-time-per-friend thing); the
+players *within* a roster are what add/drop manages without a redeploy.
+
+Rename `"you"` → your own name/id whenever you get a chance, so you show up
+in the picker the same way everyone else does — nothing depends on that key
+being literally `"you"`.
+
+## Adding/dropping players in-app
+
+"Manage roster" (next to your name in the app) opens a screen backed by
+`/api/players` — every hitter who appeared on an MLB roster this season
+(`sports/1/players`), not just yours. Search by name or team, add, or drop
+someone already on your roster. Current-state-only, same as everything
+else here — dropping a player doesn't keep any history.
+
+**One real limitation:** positions come from MLB's own single "primary
+position" field — there's no public API equivalent of the games-started
+count Yahoo uses to compute multi-slot eligibility. A player you add here
+starts eligible at just that one position. If your real Yahoo roster has
+someone qualified at more than one, add the extra ones by hand — either in
+`lib/rosters.json` (if it's before their first add/drop) or by editing the
+`eligiblePositions` array directly in their live Blob entry.
+
+## Editing a roster
+
+To hand-edit a player's entry (in `lib/rosters.json`, or a live Blob copy):
 
 - **mlbamId**: search `statsapi.mlb.com/api/v1/people/search?names=<first>%20<last>`
   in a browser, or find it in a Baseball Savant URL
@@ -142,34 +187,37 @@ Roster lives in `lib/defaultRoster.ts` — one object per hitter. To add a playe
   the splits pull.
 - **fangraphsId**: no longer used by the app's data pulls (splits now come from
   MLB's API), but left in the roster config as a handy reference link if you
-  want to manually check a player's FanGraphs page.
-- **mlbTeamId**: use the `MLB_TEAM_IDS` map already in `defaultRoster.ts`.
+  want to manually check a player's FanGraphs page. `0` if you don't have it.
+- **mlbTeamId**: use the `MLB_TEAM_IDS` map in `lib/mlbTeams.ts`.
 
-Entries marked `/* VERIFY */` in the current roster were not confirmed live —
-check those before trusting their split data.
+A few entries in the seeded `"you"` roster were marked "not confirmed live"
+when this was originally built without internet access — worth double
+checking `bats` for Max Clark and Cole Young, and `bats`/`mlbamId`/`fangraphsId`
+for Walker Jenkins, against FanGraphs/MLB.com before trusting their split data.
 
 ## Multi-user / friends using this too
 
-The device-gate above (one shared key) is a stopgap, not real multi-user
-support — everyone who unlocks it still sees the same one roster. A proper
-version (each friend logs in, sees and edits their own roster, in-app
-add/drop against the full MLB hitter pool) is being scoped separately before
-it's built.
+Everyone shares one deployment and picks their own roster by name (see
+"Rosters" above) — there's no login, because nothing here needed to be
+secret. Add/drop (above) is built; nothing else is currently on the roadmap.
 
 ## How a daily pull works, end to end
 
 On "Pull today's lineup":
 
-1. **Live roster status** (`/api/roster-status` → `lib/mlb.ts`,
+1. **Live roster status** (`/api/roster-status?user=<id>` → `lib/mlb.ts`,
    `getRosterStatuses`) — pulls the 40-man roster for every distinct MLB team
-   in your pool and resolves each player's current status (active / IL / NA)
-   fresh, right then. This is what catches a player landing on the IL the
-   morning of games, or coming off it, without anyone hand-editing
-   `defaultRoster.ts`. The hardcoded `status` field there is only a
+   in that person's pool and resolves each player's current status (active /
+   IL / NA) fresh, right then. This is what catches a player landing on the
+   IL the morning of games, or coming off it, without anyone hand-editing
+   `lib/rosters.json`. The hardcoded `status` field there is only a
    same-day-offline fallback.
 2. **Schedule + probable pitchers** (`/api/schedule`), same as before.
 3. **SIT scores** (`/api/splits` → `lib/recommend.ts`) for every player the
    live status check just confirmed is active — see the scoring table above.
+   A player with no game today at all gets a real "no score" (`null`), not a
+   number derived from stale recent-form data — see the note on that in
+   `lib/recommend.ts`.
 4. **Lineup assignment** (`lib/assignLineup.ts`) — fills all 13 active slots
    from the day's scored, active hitters, minimizing total SIT score across
    the filled slots via the Hungarian algorithm (optimal min-cost bipartite
@@ -182,6 +230,8 @@ On "Pull today's lineup":
    warning banner says so.
 
 The result renders as a clean decision view (`components/LineupDecisionView.tsx`)
-at the top of the page — who starts where, who's benched, who's excluded and
-why. The full per-hitter SIT breakdown (`RecCard` in `app/page.tsx`) is still
-there underneath, behind an expand toggle, unchanged.
+at the top of the page — bench first (worst matchup first, so the obvious
+sits are out of the way early), then who starts where, then who's excluded
+and why. Every row expands in place to the same full SIT breakdown a
+separate data-grid section used to show — same data, same look, just
+reachable per-row now instead of in one big block underneath.

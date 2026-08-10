@@ -138,6 +138,21 @@ export function buildRecommendations(
       for (const c of components) c.effectiveWeight = c.effectiveWeight / totalWeight;
     }
 
+    // A genuine off day (not in today's schedule at all) has no real matchup
+    // to score — the "season vs pitcher hand" component above silently
+    // defaults to the vs-RHP split when there's no pitcher, and recent-form
+    // (last 30/10 days) is real data regardless of whether there's a game
+    // today. Left alone, that lets an off-day player's stale hot streak
+    // produce a real, sometimes low/good-looking SIT score — which can
+    // out-rank a genuinely scheduled (if unlucky-matchup) teammate for an
+    // active slot. Force a real "no score" instead of a number here; a
+    // player who literally can't take the field today should never compete
+    // for one.
+    if (!matchup) {
+      sitScore = null;
+      for (const c of components) c.effectiveWeight = 0;
+    }
+
     // SB bonus: flat point reduction, NOT part of the weighted blend, applied
     // after — stolen-base activity is a start/sit signal OPS misses entirely.
     const sb = batterForm30?.SB ?? 0;

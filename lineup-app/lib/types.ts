@@ -74,3 +74,15 @@ export interface SitComponent {
   confidence: number; // 0-1, based on sample size
   effectiveWeight: number; // after confidence + renormalization
 }
+
+// One hitter from the full MLB hitter pool (/api/players) — the add-a-player
+// search draws from this. Deliberately smaller than Player: this is a
+// candidate, not yet a roster entry.
+export interface UniversePlayer {
+  mlbamId: number;
+  name: string;
+  mlbTeamId: number;
+  mlbTeamAbbrev: string;
+  position: string; // MLB's single "primary position" — see note in README
+  bats: "L" | "R" | "S" | null;
+}

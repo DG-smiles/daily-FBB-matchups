@@ -1,26 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { defaultRoster } from "@/lib/defaultRoster";
+import { getLiveRoster } from "@/lib/rosterStore";
 import { getRosterStatuses } from "@/lib/mlb";
-import { checkOwnerKey } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/roster-status
+ * GET /api/roster-status?user=<id>
  *
- * Resolves every rostered player's CURRENT active/IL/NA status live from the
- * MLB Stats API. Called on every "Pull today's lineup" alongside /api/schedule
- * so a same-day IL move or activation is caught automatically — the `status`
- * field hardcoded in defaultRoster.ts is only a same-day-offline fallback.
- *
- * Gated the same as /api/roster since the response is keyed by this
- * roster's specific player ids.
+ * Resolves that person's CURRENT roster's active/IL/NA status live from the
+ * MLB Stats API. Called on every "Pull today's lineup" alongside
+ * /api/schedule so a same-day IL move or activation is caught automatically
+ * — the `status` field hardcoded in lib/rosters.json is only a
+ * same-day-offline fallback.
  */
 export async function GET(req: NextRequest) {
-  const denied = checkOwnerKey(req);
-  if (denied) return denied;
+  const userId = req.nextUrl.searchParams.get("user");
+  if (!userId) {
+    return NextResponse.json({ error: "Missing ?user=<id>" }, { status: 400 });
+  }
+  const roster = await getLiveRoster(userId);
+  if (!roster) {
+    return NextResponse.json({ error: `No roster found for "${userId}"` }, { status: 404 });
+  }
+
   try {
-    const players = defaultRoster
+    const players = roster
       .filter((p) => p.mlbamId > 0) // skip unverified placeholder entries (mlbamId: 0)
       .map((p) => ({ mlbamId: p.mlbamId, mlbTeamId: p.mlbTeamId }));
 
