@@ -216,10 +216,11 @@ press, and both are rate-limited (`lib/rateLimit.ts`, a small Blob-backed
 cooldown record — not exact to the millisecond, but that's fine for a
 cooldown, unlike roster data):
 
-- **Refresh position eligibility**: once per minute per person — up to ~19
-  players × up to 3 calls each is the single biggest burst anywhere in this
-  app.
-- **Pull today's lineup**: once per 10 seconds per person, as a backstop
+- **Refresh position eligibility**: once per 5 seconds per person — up to
+  ~19 players × up to 3 calls each is the single biggest burst anywhere in
+  this app, so this is the lighter-touch end of what's reasonable, not a
+  strict guarantee against a determined bad actor.
+- **Pull today's lineup**: once per 5 seconds per person, as a backstop
   behind the UI's own loading-disabled button — light on purpose, since
   pulling is the app's core, legitimately-frequent action.
 

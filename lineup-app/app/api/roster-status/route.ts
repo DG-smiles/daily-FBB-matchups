@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 // against something bypassing the UI's own loading-disabled button (which
 // already prevents the normal double-click case) and rapid-firing this
 // directly, not to slow down a normal "pull, fix something, pull again."
-const PULL_COOLDOWN_MS = 10_000;
+const PULL_COOLDOWN_MS = 5_000;
 
 /**
  * GET /api/roster-status?user=<id>

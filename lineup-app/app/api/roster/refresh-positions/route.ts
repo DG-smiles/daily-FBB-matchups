@@ -8,7 +8,7 @@ import { Player } from "@/lib/types";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // a full roster can be a few dozen MLB calls, fanned out in parallel
 
-const REFRESH_COOLDOWN_MS = 60_000; // 1 per minute per person — this is the biggest fan-out action in the app
+const REFRESH_COOLDOWN_MS = 5_000; // per person
 
 /**
  * POST /api/roster/refresh-positions
@@ -21,7 +21,7 @@ const REFRESH_COOLDOWN_MS = 60_000; // 1 per minute per person — this is the b
  * else still updates. Saves the result directly (see lib/rosterStore.ts for
  * why this doesn't re-read Blob first) and returns the updated roster.
  *
- * Rate-limited to once per minute per person: up to ~19 players × up to 3
+ * Rate-limited to once per 5 seconds per person: up to ~19 players × up to 3
  * MLB calls each (team/position lookup + this-season and last-season
  * fielding stats) is the largest single burst of calls anywhere in this
  * app, and this button is easy to fat-finger twice.
