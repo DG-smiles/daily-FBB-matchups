@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { buildRecommendations, sitSortKey } from "@/lib/recommend";
 import { resolveOpponent, ResolvedPlayerStatus } from "@/lib/mlb";
 import { assignLineup, LineupAssignmentResult } from "@/lib/assignLineup";
+import { getLeagueConfig } from "@/lib/leagueConfig";
 import { LineupDecisionView, ExcludedPlayer } from "@/components/LineupDecisionView";
 import { RosterManager } from "@/components/RosterManager";
 import { RosterSummary } from "@/lib/rosters";
@@ -187,7 +188,7 @@ export default function Page() {
       );
       built.sort((a, b) => sitSortKey(a) - sitSortKey(b));
       setRecs(built);
-      setLineup(assignLineup(built));
+      setLineup(assignLineup(built, getLeagueConfig(userId)));
     } catch (e: any) {
       setError(e.message ?? "Something went wrong.");
     } finally {

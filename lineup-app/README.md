@@ -189,6 +189,23 @@ someone qualified at more than one, add the extra ones by hand — either in
 `lib/rosters.json` (if it's before their first add/drop) or by editing the
 `eligiblePositions` array directly in their live Blob entry.
 
+## Active roster slot layouts (leagues)
+
+Two fantasy leagues are in play, with different active-slot structures —
+`lib/leagueConfig.ts` hardcodes both, since neither changes year to year:
+
+- **Daniel G** (13 slots): C, 1B, 2B, 3B, SS, CI, MI, LF, CF, RF, OF, OF, UTIL
+- **Everyone else** (10 slots): C, 1B, 2B, 3B, SS, OF, OF, OF, UTIL, UTIL
+
+`getLeagueConfig(userId)` is the only place this is decided — `userId ===
+"daniel-g"` gets the 13-slot layout, every other id gets the 10-slot one.
+`lib/assignLineup.ts` doesn't know or care which league it's filling; it
+just takes whatever slot list it's given and finds the lowest-total-SIT
+complete assignment for it, so the same warning/bench/fill-every-slot
+behavior holds for both. If a third league shape ever shows up, this file
+is where to generalize past a two-case hardcode (e.g. a `league` field per
+person in `lib/rosters.json`).
+
 ## Editing a roster
 
 To hand-edit a player's entry (in `lib/rosters.json`, or a live Blob copy):

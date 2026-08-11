@@ -1,4 +1,4 @@
-import { LineupAssignmentResult, SLOT_LABELS, SlotAssignment } from "@/lib/assignLineup";
+import { LineupAssignmentResult, SlotAssignment } from "@/lib/assignLineup";
 import { sitTagClass } from "@/lib/recommend";
 import { LineupRecommendation, Player } from "@/lib/types";
 
@@ -32,7 +32,7 @@ export function LineupDecisionView({ assignment, excluded }: LineupDecisionViewP
         <div className="warning-banner">
           <strong>Highest SIT score of the day is starting.</strong>{" "}
           {warning.rec.player.name} ({warning.rec.sitScore}) has today&apos;s worst matchup and
-          is your only eligible {SLOT_LABELS[warning.slot]} today — worth a look at the wire.
+          is your only eligible {warning.slot.label} today — worth a look at the wire.
         </div>
       )}
 
@@ -49,7 +49,7 @@ export function LineupDecisionView({ assignment, excluded }: LineupDecisionViewP
       <div className="decision-panel">
         <div className="decision-section-title">Today&apos;s lineup</div>
         {slots.map((s) => (
-          <SlotRow key={s.slot} assignment={s} />
+          <SlotRow key={s.slot.id} assignment={s} />
         ))}
       </div>
 
@@ -78,12 +78,12 @@ function SlotRow({ assignment }: { assignment: SlotAssignment }) {
   if (unfillable || !rec) {
     return (
       <div className="rec-row rec-row-empty">
-        <span className="rec-row-slot">{SLOT_LABELS[slot]}</span>
+        <span className="rec-row-slot">{slot.label}</span>
         <span className="slot-empty">No eligible player today</span>
       </div>
     );
   }
-  return <RecRow rec={rec} leftLabel={SLOT_LABELS[slot]} />;
+  return <RecRow rec={rec} leftLabel={slot.label} />;
 }
 
 /**

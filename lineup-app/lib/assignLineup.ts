@@ -1,18 +1,23 @@
 import { LineupRecommendation } from "./types";
+import { LeagueConfig, SlotDef } from "./leagueConfig";
 
 /**
- * Fills all 13 active roster slots from today's ranked recommendations,
- * minimizing total SIT score across the filled slots, guaranteeing every
- * slot gets filled whenever a valid complete assignment exists.
+ * Fills all of a league's active roster slots from today's ranked
+ * recommendations, minimizing total SIT score across the filled slots,
+ * guaranteeing every slot gets filled whenever a valid complete assignment
+ * exists. Takes a LeagueConfig (lib/leagueConfig.ts) so the same algorithm
+ * runs for either of the two hardcoded league shapes — it doesn't know or
+ * care how many slots there are or what they're called, only which players
+ * are eligible for each one.
  *
  * WHY A REAL ASSIGNMENT ALGORITHM INSTEAD OF GREEDY SORTING:
  * "Take the sorted list, assign each player to any open eligible slot" can
  * paint itself into a corner — if a position's only eligible players get
- * greedily grabbed by flex slots (CI/MI/OF/UTIL) before the position-specific
- * slot is considered, that slot ends up unfillable even though a valid
- * complete assignment existed. This uses the Hungarian algorithm (min-cost
- * bipartite matching) instead, which finds the lowest-total-SIT complete
- * assignment across all 13 slots at once.
+ * greedily grabbed by flex slots before the position-specific slot is
+ * considered, that slot ends up unfillable even though a valid complete
+ * assignment existed. This uses the Hungarian algorithm (min-cost bipartite
+ * matching) instead, which finds the lowest-total-SIT complete assignment
+ * across every slot at once.
  *
  * Deliberately does NOT weight or bias scores by position scarcity — every
  * slot's cost is just the player's SIT score. Scarcity only affects *which*
@@ -20,72 +25,8 @@ import { LineupRecommendation } from "./types";
  * a byproduct of guaranteeing a complete, optimal fill.
  */
 
-export type SlotId =
-  | "C"
-  | "1B"
-  | "2B"
-  | "3B"
-  | "SS"
-  | "CI"
-  | "MI"
-  | "LF"
-  | "CF"
-  | "RF"
-  | "OF1"
-  | "OF2"
-  | "UTIL";
-
-// Display order matches the roster-spots table in daily-lineup-analysis.md.
-export const SLOT_ORDER: SlotId[] = [
-  "C",
-  "1B",
-  "2B",
-  "3B",
-  "SS",
-  "CI",
-  "MI",
-  "LF",
-  "CF",
-  "RF",
-  "OF1",
-  "OF2",
-  "UTIL",
-];
-
-export const SLOT_LABELS: Record<SlotId, string> = {
-  C: "C",
-  "1B": "1B",
-  "2B": "2B",
-  "3B": "3B",
-  SS: "SS",
-  CI: "CI",
-  MI: "MI",
-  LF: "LF",
-  CF: "CF",
-  RF: "RF",
-  OF1: "OF",
-  OF2: "OF",
-  UTIL: "UTIL",
-};
-
-const SLOT_ELIGIBILITY: Record<SlotId, (eligiblePositions: string[]) => boolean> = {
-  C: (p) => p.includes("C"),
-  "1B": (p) => p.includes("1B"),
-  "2B": (p) => p.includes("2B"),
-  "3B": (p) => p.includes("3B"),
-  SS: (p) => p.includes("SS"),
-  CI: (p) => p.includes("1B") || p.includes("3B"),
-  MI: (p) => p.includes("2B") || p.includes("SS"),
-  LF: (p) => p.includes("LF"),
-  CF: (p) => p.includes("CF"),
-  RF: (p) => p.includes("RF"),
-  OF1: (p) => p.includes("LF") || p.includes("CF") || p.includes("RF"),
-  OF2: (p) => p.includes("LF") || p.includes("CF") || p.includes("RF"),
-  UTIL: () => true,
-};
-
 export interface SlotAssignment {
-  slot: SlotId;
+  slot: SlotDef;
   rec: LineupRecommendation | null;
   /** true if no eligible, scoreable player existed for this slot at all. */
   unfillable: boolean;
@@ -93,7 +34,7 @@ export interface SlotAssignment {
 
 export interface LineupWarning {
   rec: LineupRecommendation;
-  slot: SlotId;
+  slot: SlotDef;
 }
 
 export interface LineupAssignmentResult {
@@ -117,6 +58,8 @@ const PHANTOM_COST = 10_000_000;
  * matrices where n <= m: assigns each of n rows to a distinct column,
  * minimizing total cost. 1-indexed internally per the standard formulation.
  * Returns, for each row (0-indexed), the assigned column index (0-indexed).
+ * Purely mechanical — has no idea what a "slot" or "player" is, which is
+ * exactly why the same function works for any league's slot count/shape.
  */
 function hungarianAssignment(cost: number[][]): number[] {
   const n = cost.length; // rows (slots)
@@ -177,15 +120,20 @@ function hungarianAssignment(cost: number[][]): number[] {
 }
 
 /**
- * Fills all 13 active slots from today's recommendations. Recs with no
- * sitScore (off day, or missing data) can't meaningfully start and are
- * treated as bench-only, same as if they were ineligible for every slot.
+ * Fills every active slot in `league` from today's recommendations. Recs
+ * with no sitScore (off day, or missing data) can't meaningfully start and
+ * are treated as bench-only, same as if they were ineligible for every slot.
  */
-export function assignLineup(recs: LineupRecommendation[]): LineupAssignmentResult {
+export function assignLineup(
+  recs: LineupRecommendation[],
+  league: LeagueConfig
+): LineupAssignmentResult {
+  const slotDefs = league.slots;
+  const n = slotDefs.length;
+
   const candidates = recs.filter((r) => r.sitScore != null);
   const scorelessBench = recs.filter((r) => r.sitScore == null);
 
-  const n = SLOT_ORDER.length; // 13
   // Pad with phantom placeholders if there aren't enough real, scoreable
   // candidates to fill every slot, so the matching algorithm always has
   // enough columns to run. Phantoms are ineligible for every slot (including
@@ -196,10 +144,10 @@ export function assignLineup(recs: LineupRecommendation[]): LineupAssignmentResu
     ...(Array(padCount).fill(null) as null[]),
   ];
 
-  const cost: number[][] = SLOT_ORDER.map((slot) =>
+  const cost: number[][] = slotDefs.map((slotDef) =>
     pool.map((rec) => {
       if (rec == null) return PHANTOM_COST;
-      return SLOT_ELIGIBILITY[slot](rec.player.eligiblePositions)
+      return slotDef.eligible(rec.player.eligiblePositions)
         ? (rec.sitScore as number)
         : INELIGIBLE_COST;
     })
@@ -208,12 +156,12 @@ export function assignLineup(recs: LineupRecommendation[]): LineupAssignmentResu
   const rowToCol = hungarianAssignment(cost);
 
   const assignedIdx = new Set<number>();
-  const slots: SlotAssignment[] = SLOT_ORDER.map((slot, i) => {
+  const slots: SlotAssignment[] = slotDefs.map((slotDef, i) => {
     const col = rowToCol[i];
     const rec = col >= 0 ? pool[col] : null;
     const unfillable = !rec || cost[i][col] >= INELIGIBLE_COST;
     if (rec && !unfillable) assignedIdx.add(col);
-    return { slot, rec: unfillable ? null : rec, unfillable };
+    return { slot: slotDef, rec: unfillable ? null : rec, unfillable };
   });
 
   const benchFromCandidates = candidates.filter((_, idx) => !assignedIdx.has(idx));
