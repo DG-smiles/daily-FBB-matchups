@@ -138,6 +138,15 @@ to everyone else who opens the app, same as it would be in a real league.
   not a real database — it's the smallest thing that's actually writable at
   runtime. `/api/roster` and `/api/roster-status` both check Blob first and
   fall back to the seed file, so reads always reflect the latest state.
+- Every add/drop reads current state, changes it, and writes the whole thing
+  back — so two mutations for the same person overlapping (e.g. clicking Add
+  twice quickly) can otherwise race and the second write silently clobbers
+  the first. `mutateRoster()` guards against this with the blob's ETag
+  (optimistic concurrency: the write only succeeds if nothing changed since
+  it was read, and retries against fresh data if something did) — same
+  pattern you'd use against any shared object store, not something specific
+  to this app. The UI also disables Add/Drop while one is already saving, as
+  a faster first line of defense.
 
 **Adding a friend:** copy this block into `lib/rosters.json`, give it a short
 id key and their name, and start them with an empty roster (or seed a

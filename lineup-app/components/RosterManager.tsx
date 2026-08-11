@@ -34,6 +34,12 @@ export function RosterManager({ userId, roster, onRosterChange }: RosterManagerP
   }, []);
 
   const rosteredIds = useMemo(() => new Set(roster.map((p) => p.mlbamId)), [roster]);
+  // True while any add/drop is in flight — used to disable every button,
+  // not just the one that was clicked, so a second click can't fire a
+  // request that races the first one. (The server also protects against
+  // this now, via optimistic concurrency in lib/rosterStore.ts — this is
+  // just the fast, local version of the same guarantee.)
+  const mutating = pendingId !== null;
 
   const results = useMemo(() => {
     if (!universe || query.trim().length < 2) return [];
@@ -99,7 +105,7 @@ export function RosterManager({ userId, roster, onRosterChange }: RosterManagerP
             <button
               className="roster-drop-button"
               onClick={() => handleDrop(p.id, p.name)}
-              disabled={pendingId === p.id}
+              disabled={mutating}
             >
               {pendingId === p.id ? "…" : "Drop"}
             </button>
@@ -120,6 +126,7 @@ export function RosterManager({ userId, roster, onRosterChange }: RosterManagerP
       {!universe && !universeError && <div className="note">Loading player pool…</div>}
 
       {actionError && <div className="note roster-error">{actionError}</div>}
+      {mutating && <div className="note">Saving…</div>}
 
       {query.trim().length >= 2 && universe && (
         <div className="roster-manage-list">
@@ -136,7 +143,7 @@ export function RosterManager({ userId, roster, onRosterChange }: RosterManagerP
               <button
                 className="roster-picker-button"
                 onClick={() => handleAdd(p.mlbamId)}
-                disabled={pendingId === p.mlbamId}
+                disabled={mutating}
               >
                 {pendingId === p.mlbamId ? "…" : "Add"}
               </button>
