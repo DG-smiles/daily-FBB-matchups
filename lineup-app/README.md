@@ -136,17 +136,25 @@ to everyone else who opens the app, same as it would be in a real league.
   JSON blob per person, seeded from `rosters.json` the first time anyone
   adds or drops for that person, live from then on. Still just a JSON blob,
   not a real database — it's the smallest thing that's actually writable at
-  runtime. `/api/roster` and `/api/roster-status` both check Blob first and
-  fall back to the seed file, so reads always reflect the latest state.
-- Every add/drop reads current state, changes it, and writes the whole thing
-  back — so two mutations for the same person overlapping (e.g. clicking Add
-  twice quickly) can otherwise race and the second write silently clobbers
-  the first. `mutateRoster()` guards against this with the blob's ETag
-  (optimistic concurrency: the write only succeeds if nothing changed since
-  it was read, and retries against fresh data if something did) — same
-  pattern you'd use against any shared object store, not something specific
-  to this app. The UI also disables Add/Drop while one is already saving, as
-  a faster first line of defense.
+  runtime. `/api/roster` and `/api/roster-status` (used for the initial
+  "who's this" pick and IL/NA status, not for add/drop) read from Blob and
+  fall back to the seed file if nothing's been written yet.
+- Add/drop deliberately does **not** re-read Blob as the basis for a write.
+  It's a read-modify-write under the hood, and re-reading Blob immediately
+  before writing (even hardened with ETag-based optimistic concurrency)
+  still lost entries in testing when adding a few seconds apart — Vercel
+  Blob's read-after-write consistency lagged behind further than expected
+  under repeated overwrites of the same pathname. Instead, `RosterManager`
+  sends its own already-correct roster state with every add/drop request,
+  and the server just saves "that list, plus/minus one player" directly —
+  no dependency on Blob's read consistency for correctness. This is safe
+  because the client only ever has one add/drop in flight at a time (the
+  `mutating` lock in `components/RosterManager.tsx` — every button is
+  disabled while any request is pending, and it isn't just a UX nicety here,
+  it's load-bearing). The tradeoff: two *different* devices editing the same
+  person's roster in the same few seconds could still race — much narrower
+  than what was actually happening, and not a pattern this app's usage
+  (one person, their own roster) runs into in practice.
 
 **Adding a friend:** copy this block into `lib/rosters.json`, give it a short
 id key and their name, and start them with an empty roster (or seed a

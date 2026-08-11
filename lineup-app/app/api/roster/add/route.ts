@@ -16,18 +16,24 @@ function slugify(name: string, mlbamId: number): string {
 
 /**
  * POST /api/roster/add
- * Body: { userId: string, mlbamId: number }
+ * Body: { userId: string, mlbamId: number, currentRoster: Player[] }
  *
- * Resolves the player's current team/position/bats fresh from MLB (doesn't
- * trust whatever the client sent — mlbamId is the only input taken as-is),
- * builds a full roster entry, and writes it to that person's live roster in
- * Blob storage. No-op (not an error) if already rostered.
+ * currentRoster is the client's own up-to-date roster state (see
+ * lib/rosterStore.ts for why this route trusts that instead of re-reading
+ * Blob itself). Resolves the player's current team/position/bats fresh from
+ * MLB (doesn't trust whatever the client sent about the player being added
+ * — mlbamId is the only input taken as-is there), builds a full roster
+ * entry, and writes currentRoster + that entry to Blob. No-op (not an
+ * error) if already rostered.
  */
 export async function POST(req: NextRequest) {
   try {
-    const { userId, mlbamId } = await req.json();
-    if (!userId || !mlbamId) {
-      return NextResponse.json({ error: "Missing userId or mlbamId" }, { status: 400 });
+    const { userId, mlbamId, currentRoster } = await req.json();
+    if (!userId || !mlbamId || !Array.isArray(currentRoster)) {
+      return NextResponse.json(
+        { error: "Missing userId, mlbamId, or currentRoster" },
+        { status: 400 }
+      );
     }
 
     const displayName = getDisplayName(userId);
@@ -54,7 +60,7 @@ export async function POST(req: NextRequest) {
       fangraphsId: 0,
     };
 
-    const updated = await addPlayer(userId, displayName, player);
+    const updated = await addPlayer(userId, displayName, currentRoster as Player[], player);
     return NextResponse.json({ roster: updated });
   } catch (err: any) {
     return NextResponse.json({ error: err.message ?? "Unknown error" }, { status: 500 });

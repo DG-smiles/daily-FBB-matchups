@@ -34,11 +34,12 @@ export function RosterManager({ userId, roster, onRosterChange }: RosterManagerP
   }, []);
 
   const rosteredIds = useMemo(() => new Set(roster.map((p) => p.mlbamId)), [roster]);
-  // True while any add/drop is in flight — used to disable every button,
-  // not just the one that was clicked, so a second click can't fire a
-  // request that races the first one. (The server also protects against
-  // this now, via optimistic concurrency in lib/rosterStore.ts — this is
-  // just the fast, local version of the same guarantee.)
+  // True while any add/drop is in flight. This isn't just a UX nicety —
+  // it's load-bearing: the server trusts whatever roster array we send it
+  // as "current" rather than re-reading Blob itself (see lib/rosterStore.ts
+  // for why), so correctness depends on never having two of these in
+  // flight at once from this component. Every button below is disabled
+  // while `mutating`, not just the one that was clicked.
   const mutating = pendingId !== null;
 
   const results = useMemo(() => {
@@ -57,7 +58,7 @@ export function RosterManager({ userId, roster, onRosterChange }: RosterManagerP
       const res = await fetch("/api/roster/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, mlbamId }),
+        body: JSON.stringify({ userId, mlbamId, currentRoster: roster }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Add failed");
@@ -78,7 +79,7 @@ export function RosterManager({ userId, roster, onRosterChange }: RosterManagerP
       const res = await fetch("/api/roster/drop", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, playerId }),
+        body: JSON.stringify({ userId, playerId, currentRoster: roster }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Drop failed");
