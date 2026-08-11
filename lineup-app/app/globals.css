@@ -458,3 +458,8 @@ button.secondary {
 .roster-error {
   color: var(--warn);
 }
+
+.roster-refresh-button {
+  width: 100%;
+  margin-bottom: 16px;
+}

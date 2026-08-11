@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPlayerInfo } from "@/lib/mlb";
+import { getPlayerInfo, getEligiblePositions } from "@/lib/mlb";
 import { getDisplayName } from "@/lib/rosters";
 import { addPlayer } from "@/lib/rosterStore";
 import { Player } from "@/lib/types";
@@ -22,8 +22,10 @@ function slugify(name: string, mlbamId: number): string {
  * lib/rosterStore.ts for why this route trusts that instead of re-reading
  * Blob itself). Resolves the player's current team/position/bats fresh from
  * MLB (doesn't trust whatever the client sent about the player being added
- * — mlbamId is the only input taken as-is there), builds a full roster
- * entry, and writes currentRoster + that entry to Blob. No-op (not an
+ * — mlbamId is the only input taken as-is there), computes full
+ * multi-position eligibility (see lib/mlb.ts, getEligiblePositions —
+ * falls back to just the primary position if that lookup fails for any
+ * reason), and writes currentRoster + the new entry to Blob. No-op (not an
  * error) if already rostered.
  */
 export async function POST(req: NextRequest) {
@@ -49,12 +51,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const eligiblePositions = await getEligiblePositions(
+      info.mlbamId,
+      info.position,
+      new Date().getFullYear()
+    ).catch(() => [info.position]); // any failure — just use primary, per spec
+
     const player: Player = {
       id: slugify(info.name, info.mlbamId),
       name: info.name,
       mlbTeamId: info.mlbTeamId,
       mlbTeamAbbrev: info.mlbTeamAbbrev,
-      eligiblePositions: [info.position],
+      eligiblePositions,
       bats: info.bats ?? "R",
       mlbamId: info.mlbamId,
       fangraphsId: 0,

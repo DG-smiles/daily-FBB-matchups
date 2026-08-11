@@ -113,6 +113,81 @@ export async function getPlayerInfo(mlbamId: number): Promise<UniversePlayer | n
   };
 }
 
+/**
+ * Yahoo's actual batter eligibility rule: at a given fielding position, a
+ * player qualifies if EITHER 5 starts OR 10 total appearances at that
+ * position, met in the current season OR the prior one (retention).
+ *
+ * Only the 8 non-pitcher fielding positions are checked (C, 1B, 2B, 3B, SS,
+ * LF, CF, RF) — every hitter is treated as silently DH/UTIL-eligible
+ * regardless of games logged there, since no active slot in either league
+ * config checks for "DH" specifically (UTIL already accepts anyone). The
+ * MLB-reported primary position is always included even if the games/starts
+ * computation somehow doesn't clear the bar for it — that designation is
+ * authoritative and shouldn't be silently dropped by this check.
+ *
+ * NOT verified against live output — built without a way to hit the real
+ * API first. If eligibility looks wrong for a specific player after
+ * deploying, /api/debug-mlb?player=<mlbamId>&type=fielding&season=YYYY
+ * shows the exact raw response to compare this against.
+ */
+const FIELDING_POSITIONS = new Set(["C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"]);
+const GAMES_STARTED_THRESHOLD = 5;
+const GAMES_PLAYED_THRESHOLD = 10;
+
+async function getPositionGamesForSeason(
+  mlbamId: number,
+  season: number
+): Promise<Record<string, { games: number; gamesStarted: number }>> {
+  const url = `${MLB_BASE}/people/${mlbamId}/stats?stats=season&group=fielding&season=${season}`;
+  const res = await fetch(url, { next: { revalidate: 0 } });
+  if (!res.ok) {
+    throw new Error(`MLB fielding stats request failed: ${res.status}`);
+  }
+  const data = await res.json();
+  const splits: any[] = data.stats?.[0]?.splits ?? [];
+  const out: Record<string, { games: number; gamesStarted: number }> = {};
+  for (const split of splits) {
+    const abbrev = split.position?.abbreviation;
+    if (!abbrev || !FIELDING_POSITIONS.has(abbrev)) continue;
+    out[abbrev] = {
+      games: split.stat?.games ?? 0,
+      gamesStarted: split.stat?.gamesStarted ?? 0,
+    };
+  }
+  return out;
+}
+
+export async function getEligiblePositions(
+  mlbamId: number,
+  primaryPosition: string,
+  currentSeason: number
+): Promise<string[]> {
+  const eligible = new Set<string>();
+  if (FIELDING_POSITIONS.has(primaryPosition)) eligible.add(primaryPosition);
+
+  const emptyPositionGames: Record<string, { games: number; gamesStarted: number }> = {};
+  const [thisYear, lastYear] = await Promise.all([
+    getPositionGamesForSeason(mlbamId, currentSeason).catch(() => emptyPositionGames),
+    getPositionGamesForSeason(mlbamId, currentSeason - 1).catch(() => emptyPositionGames),
+  ]);
+
+  for (const source of [thisYear, lastYear]) {
+    for (const [pos, { games, gamesStarted }] of Object.entries(source)) {
+      if (gamesStarted >= GAMES_STARTED_THRESHOLD || games >= GAMES_PLAYED_THRESHOLD) {
+        eligible.add(pos);
+      }
+    }
+  }
+
+  // Nothing qualified at all (a pure DH, most likely) — show something
+  // meaningful rather than an empty position list. Doesn't affect slot
+  // eligibility either way; UTIL already accepts everyone.
+  if (eligible.size === 0) eligible.add("DH");
+
+  return Array.from(eligible);
+}
+
 export type RosterStatus = "active" | "IL" | "NA";
 
 export interface ResolvedPlayerStatus {

@@ -85,7 +85,16 @@ export async function getLiveRoster(userId: string): Promise<Player[] | null> {
   return seedPlayers;
 }
 
-async function writeLiveRoster(
+/**
+ * Saves an already-fully-known roster array directly — no read, no
+ * modification, just persist exactly what's passed in. Used by add/drop
+ * (via addPlayer/dropPlayer below) and by the position-eligibility refresh
+ * flow (app/api/roster/refresh-positions), which recomputes every player's
+ * eligiblePositions client-side-known-roster-in, then saves the result the
+ * same way — no server-side re-read of Blob as the basis for the write, for
+ * the same reason described in the file-level comment above.
+ */
+export async function saveRoster(
   userId: string,
   displayName: string,
   players: Player[]
@@ -115,7 +124,7 @@ export async function addPlayer(
     return currentRoster;
   }
   const updated = [...currentRoster, player];
-  await writeLiveRoster(userId, displayName, updated);
+  await saveRoster(userId, displayName, updated);
   return updated;
 }
 
@@ -130,6 +139,6 @@ export async function dropPlayer(
   playerId: string
 ): Promise<Player[]> {
   const updated = currentRoster.filter((p) => p.id !== playerId);
-  await writeLiveRoster(userId, displayName, updated);
+  await saveRoster(userId, displayName, updated);
   return updated;
 }

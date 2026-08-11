@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getLiveRoster } from "@/lib/rosterStore";
 import { getRosterStatuses } from "@/lib/mlb";
+import { checkCooldown } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
+
+// Light touch on purpose — this is the app's core, legitimately-frequent
+// action, not something to add real friction to. It exists as a backstop
+// against something bypassing the UI's own loading-disabled button (which
+// already prevents the normal double-click case) and rapid-firing this
+// directly, not to slow down a normal "pull, fix something, pull again."
+const PULL_COOLDOWN_MS = 10_000;
 
 /**
  * GET /api/roster-status?user=<id>
@@ -18,6 +26,15 @@ export async function GET(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "Missing ?user=<id>" }, { status: 400 });
   }
+
+  const cooldown = await checkCooldown(`pull-${userId}`, PULL_COOLDOWN_MS);
+  if (!cooldown.allowed) {
+    return NextResponse.json(
+      { error: `Please wait ${Math.ceil(cooldown.retryAfterMs / 1000)}s before pulling again.` },
+      { status: 429 }
+    );
+  }
+
   const roster = await getLiveRoster(userId);
   if (!roster) {
     return NextResponse.json({ error: `No roster found for "${userId}"` }, { status: 404 });

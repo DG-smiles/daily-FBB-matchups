@@ -181,13 +181,52 @@ players *within* a roster are what add/drop manages without a redeploy.
 someone already on your roster. Current-state-only, same as everything
 else here — dropping a player doesn't keep any history.
 
-**One real limitation:** positions come from MLB's own single "primary
-position" field — there's no public API equivalent of the games-started
-count Yahoo uses to compute multi-slot eligibility. A player you add here
-starts eligible at just that one position. If your real Yahoo roster has
-someone qualified at more than one, add the extra ones by hand — either in
-`lib/rosters.json` (if it's before their first add/drop) or by editing the
-`eligiblePositions` array directly in their live Blob entry.
+**Position eligibility matches Yahoo's actual rule**, not just MLB's single
+"primary position": a player qualifies at a position with 5 starts *or* 10
+total appearances there, met in the current season *or* the prior one
+(Yahoo's retention rule — you keep a position all season if you qualified
+either this year or last). This runs automatically on add
+(`getEligiblePositions` in `lib/mlb.ts`, pulling fielding-by-position stats
+for both seasons) — only the 8 non-pitcher fielding positions are checked;
+every hitter is treated as silently DH/UTIL-eligible regardless, since
+neither league config actually has a distinct DH slot (UTIL already accepts
+anyone). MLB's reported primary position is always included even if the
+games/starts computation somehow doesn't clear the bar for it — that
+designation is authoritative and never gets silently dropped. If the lookup
+fails for any reason, the add still goes through with just the primary
+position rather than blocking.
+
+**"Refresh position eligibility"** (top of the roster-manager panel)
+re-runs this for every player already on the roster — for a trade, a
+position change, or just to pick up positions someone gained mid-season.
+Rate-limited to once a minute per person (see "Rate limiting" below) since
+a full roster can be ~50 MLB calls in one press; the button disables (with
+"Refreshing…") while it's running, and every add/drop button disables along
+with it, since only one roster save should be in flight at a time.
+
+**Not verified against live output** — built without a way to hit the real
+API first. If eligibility looks wrong for someone after deploying,
+`/api/debug-mlb?player=<mlbamId>&type=fielding&season=YYYY` shows MLB's raw
+response to compare against what the app computed.
+
+## Rate limiting
+
+A couple of actions here fan out into a lot of MLB calls from one button
+press, and both are rate-limited (`lib/rateLimit.ts`, a small Blob-backed
+cooldown record — not exact to the millisecond, but that's fine for a
+cooldown, unlike roster data):
+
+- **Refresh position eligibility**: once per minute per person — up to ~19
+  players × up to 3 calls each is the single biggest burst anywhere in this
+  app.
+- **Pull today's lineup**: once per 10 seconds per person, as a backstop
+  behind the UI's own loading-disabled button — light on purpose, since
+  pulling is the app's core, legitimately-frequent action.
+
+Individual add/drop is deliberately **not** rate-limited beyond the
+in-flight `busy` lock already in `RosterManager` — each one is a single MLB
+call, not a multiplier, and adding friction there would undo the "rapid
+sequential adds should just work" fix from earlier in this project's history.
 
 ## Active roster slot layouts (leagues)
 
