@@ -253,17 +253,13 @@ To hand-edit a player's entry (in `lib/rosters.json`, or a live Blob copy):
 - **mlbamId**: search `statsapi.mlb.com/api/v1/people/search?names=<first>%20<last>`
   in a browser, or find it in a Baseball Savant URL
   (`baseballsavant.mlb.com/savant-player/<slug>-<mlbamId>`). This is the only ID
-  the app actually needs now — it drives both the schedule/pitcher matching and
-  the splits pull.
-- **fangraphsId**: no longer used by the app's data pulls (splits now come from
-  MLB's API), but left in the roster config as a handy reference link if you
-  want to manually check a player's FanGraphs page. `0` if you don't have it.
+  the app needs — it drives the schedule/pitcher matching, the splits pull,
+  and position-eligibility resolution.
 - **mlbTeamId**: use the `MLB_TEAM_IDS` map in `lib/mlbTeams.ts`.
 
-A few entries in the seeded `"daniel-g"` roster were marked "not confirmed live"
-when this was originally built without internet access — worth double
-checking `bats` for Max Clark and Cole Young, and `bats`/`mlbamId`/`fangraphsId`
-for Walker Jenkins, against FanGraphs/MLB.com before trusting their split data.
+Walker Jenkins is currently seeded with a placeholder `mlbamId: 0` — no
+real id was ever found for him, so he's excluded from live IL/NA status
+resolution until one's filled in.
 
 ## Multi-user / friends using this too
 

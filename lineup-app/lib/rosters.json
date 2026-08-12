@@ -2,49 +2,55 @@
   "daniel-g": {
     "displayName": "Daniel G",
     "players": [
-      { "id": "riley-greene", "name": "R. Greene", "mlbTeamId": 116, "mlbTeamAbbrev": "DET", "eligiblePositions": ["LF", "CF", "RF"], "bats": "L", "mlbamId": 682985, "fangraphsId": 25976 },
-      { "id": "heliot-ramos", "name": "H. Ramos", "mlbTeamId": 147, "mlbTeamAbbrev": "NYY", "eligiblePositions": ["LF", "CF", "RF"], "bats": "R", "mlbamId": 671218, "fangraphsId": 22515 },
-      { "id": "jj-bleday", "name": "J. Bleday", "mlbTeamId": 113, "mlbTeamAbbrev": "CIN", "eligiblePositions": ["LF", "CF", "RF"], "bats": "L", "mlbamId": 668709, "fangraphsId": 26368 },
-      { "id": "jac-caglianone", "name": "J. Caglianone", "mlbTeamId": 118, "mlbTeamAbbrev": "KC", "eligiblePositions": ["1B", "RF"], "bats": "L", "mlbamId": 695506, "fangraphsId": 35041 },
-      { "id": "max-clark", "name": "M. Clark", "mlbTeamId": 116, "mlbTeamAbbrev": "DET", "eligiblePositions": ["CF"], "bats": "L", "mlbamId": 703601, "fangraphsId": 0 },
-      { "id": "gabriel-moreno", "name": "G. Moreno", "mlbTeamId": 109, "mlbTeamAbbrev": "ARI", "eligiblePositions": ["C"], "bats": "R", "mlbamId": 672515, "fangraphsId": 22664 },
-      { "id": "ivan-herrera", "name": "I. Herrera", "mlbTeamId": 138, "mlbTeamAbbrev": "STL", "eligiblePositions": ["C"], "bats": "S", "mlbamId": 671056, "fangraphsId": 20599 },
-      { "id": "alec-burleson", "name": "A. Burleson", "mlbTeamId": 138, "mlbTeamAbbrev": "STL", "eligiblePositions": ["1B", "LF", "RF"], "bats": "L", "mlbamId": 676475, "fangraphsId": 27615 },
-      { "id": "jackson-holliday", "name": "J. Holliday", "mlbTeamId": 110, "mlbTeamAbbrev": "BAL", "eligiblePositions": ["2B", "SS"], "bats": "L", "mlbamId": 702616, "fangraphsId": 31781 },
-      { "id": "jazz-chisholm", "name": "J. Chisholm Jr.", "mlbTeamId": 147, "mlbTeamAbbrev": "NYY", "eligiblePositions": ["2B", "3B"], "bats": "L", "mlbamId": 665862, "fangraphsId": 20454 },
-      { "id": "mookie-betts", "name": "M. Betts", "mlbTeamId": 119, "mlbTeamAbbrev": "LAD", "eligiblePositions": ["SS"], "bats": "R", "mlbamId": 605141, "fangraphsId": 13611 },
-      { "id": "colson-montgomery", "name": "C. Montgomery", "mlbTeamId": 145, "mlbTeamAbbrev": "CWS", "eligiblePositions": ["3B", "SS"], "bats": "L", "mlbamId": 695657, "fangraphsId": 29712 },
-      { "id": "zach-neto", "name": "Z. Neto", "mlbTeamId": 108, "mlbTeamAbbrev": "LAA", "eligiblePositions": ["SS"], "bats": "R", "mlbamId": 687263, "fangraphsId": 31347 },
-      { "id": "cole-young", "name": "C. Young", "mlbTeamId": 136, "mlbTeamAbbrev": "SEA", "eligiblePositions": ["2B"], "bats": "L", "mlbamId": 702284, "fangraphsId": 31680 },
-      { "id": "dominic-canzone", "name": "D. Canzone", "mlbTeamId": 136, "mlbTeamAbbrev": "SEA", "eligiblePositions": ["LF", "RF"], "bats": "L", "mlbamId": 686527, "fangraphsId": 26438 },
-      { "id": "brendan-donovan", "name": "B. Donovan", "mlbTeamId": 136, "mlbTeamAbbrev": "SEA", "eligiblePositions": ["2B", "3B", "SS", "LF"], "bats": "L", "mlbamId": 680977, "fangraphsId": 24679 },
-      { "id": "spencer-horwitz", "name": "S. Horwitz", "mlbTeamId": 134, "mlbTeamAbbrev": "PIT", "eligiblePositions": ["1B"], "bats": "L", "mlbamId": 687462, "fangraphsId": 26477 },
-      { "id": "byron-buxton", "name": "B. Buxton", "mlbTeamId": 142, "mlbTeamAbbrev": "MIN", "eligiblePositions": ["CF"], "bats": "R", "mlbamId": 621439, "fangraphsId": 14161, "status": "IL" },
-      { "id": "walker-jenkins", "name": "W. Jenkins", "mlbTeamId": 142, "mlbTeamAbbrev": "MIN", "eligiblePositions": ["LF", "CF", "RF"], "bats": "L", "mlbamId": 0, "fangraphsId": 0, "status": "NA" }
+      {"id": "riley-greene", "name": "R. Greene", "mlbTeamId": 116, "mlbTeamAbbrev": "DET", "eligiblePositions": ["LF", "CF", "RF"], "bats": "L", "mlbamId": 682985},
+      {"id": "heliot-ramos", "name": "H. Ramos", "mlbTeamId": 147, "mlbTeamAbbrev": "NYY", "eligiblePositions": ["LF", "CF", "RF"], "bats": "R", "mlbamId": 671218},
+      {"id": "jj-bleday", "name": "J. Bleday", "mlbTeamId": 113, "mlbTeamAbbrev": "CIN", "eligiblePositions": ["LF", "CF", "RF"], "bats": "L", "mlbamId": 668709},
+      {"id": "jac-caglianone", "name": "J. Caglianone", "mlbTeamId": 118, "mlbTeamAbbrev": "KC", "eligiblePositions": ["1B", "RF"], "bats": "L", "mlbamId": 695506},
+      {"id": "max-clark", "name": "M. Clark", "mlbTeamId": 116, "mlbTeamAbbrev": "DET", "eligiblePositions": ["CF"], "bats": "L", "mlbamId": 703601},
+      {"id": "gabriel-moreno", "name": "G. Moreno", "mlbTeamId": 109, "mlbTeamAbbrev": "ARI", "eligiblePositions": ["C"], "bats": "R", "mlbamId": 672515},
+      {"id": "ivan-herrera", "name": "I. Herrera", "mlbTeamId": 138, "mlbTeamAbbrev": "STL", "eligiblePositions": ["C"], "bats": "S", "mlbamId": 671056},
+      {"id": "alec-burleson", "name": "A. Burleson", "mlbTeamId": 138, "mlbTeamAbbrev": "STL", "eligiblePositions": ["1B", "LF", "RF"], "bats": "L", "mlbamId": 676475},
+      {"id": "jackson-holliday", "name": "J. Holliday", "mlbTeamId": 110, "mlbTeamAbbrev": "BAL", "eligiblePositions": ["2B", "SS"], "bats": "L", "mlbamId": 702616},
+      {"id": "jazz-chisholm", "name": "J. Chisholm Jr.", "mlbTeamId": 147, "mlbTeamAbbrev": "NYY", "eligiblePositions": ["2B", "3B"], "bats": "L", "mlbamId": 665862},
+      {"id": "mookie-betts", "name": "M. Betts", "mlbTeamId": 119, "mlbTeamAbbrev": "LAD", "eligiblePositions": ["SS"], "bats": "R", "mlbamId": 605141},
+      {"id": "colson-montgomery", "name": "C. Montgomery", "mlbTeamId": 145, "mlbTeamAbbrev": "CWS", "eligiblePositions": ["3B", "SS"], "bats": "L", "mlbamId": 695657},
+      {"id": "zach-neto", "name": "Z. Neto", "mlbTeamId": 108, "mlbTeamAbbrev": "LAA", "eligiblePositions": ["SS"], "bats": "R", "mlbamId": 687263},
+      {"id": "cole-young", "name": "C. Young", "mlbTeamId": 136, "mlbTeamAbbrev": "SEA", "eligiblePositions": ["2B"], "bats": "L", "mlbamId": 702284},
+      {"id": "dominic-canzone", "name": "D. Canzone", "mlbTeamId": 136, "mlbTeamAbbrev": "SEA", "eligiblePositions": ["LF", "RF"], "bats": "L", "mlbamId": 686527},
+      {"id": "brendan-donovan", "name": "B. Donovan", "mlbTeamId": 136, "mlbTeamAbbrev": "SEA", "eligiblePositions": ["2B", "3B", "SS", "LF"], "bats": "L", "mlbamId": 680977},
+      {"id": "spencer-horwitz", "name": "S. Horwitz", "mlbTeamId": 134, "mlbTeamAbbrev": "PIT", "eligiblePositions": ["1B"], "bats": "L", "mlbamId": 687462},
+      {"id": "byron-buxton", "name": "B. Buxton", "mlbTeamId": 142, "mlbTeamAbbrev": "MIN", "eligiblePositions": ["CF"], "bats": "R", "mlbamId": 621439, "status": "IL"},
+      {"id": "walker-jenkins", "name": "W. Jenkins", "mlbTeamId": 142, "mlbTeamAbbrev": "MIN", "eligiblePositions": ["LF", "CF", "RF"], "bats": "L", "mlbamId": 0, "status": "NA"}
     ]
   },
   "matt-r": {
     "displayName": "Matt R",
-    "players": []
+    "players": [
+    ]
   },
   "mark-n": {
     "displayName": "Mark N",
-    "players": []
+    "players": [
+    ]
   },
   "steven-n": {
     "displayName": "Steven N",
-    "players": []
+    "players": [
+    ]
   },
   "daniel-k": {
     "displayName": "Daniel K",
-    "players": []
+    "players": [
+    ]
   },
   "curt-r": {
     "displayName": "Curt R",
-    "players": []
+    "players": [
+    ]
   },
   "steve-h": {
     "displayName": "Steve H",
-    "players": []
+    "players": [
+    ]
   }
 }

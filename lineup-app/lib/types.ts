@@ -9,8 +9,7 @@ export interface Player {
   mlbTeamAbbrev: string; // e.g. "DET"
   eligiblePositions: string[]; // e.g. ["LF", "CF", "RF"]
   bats: Hand;
-  mlbamId: number; // MLB Advanced Media person id (statsapi.mlb.com)
-  fangraphsId: number; // FanGraphs player id (from fangraphs.com/players/.../<id>/...)
+  mlbamId: number; // MLB Advanced Media person id (statsapi.mlb.com) — the only external id this app uses
   status?: "active" | "IL" | "NA";
 }
 

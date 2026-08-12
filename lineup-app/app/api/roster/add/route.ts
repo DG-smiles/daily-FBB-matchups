@@ -65,7 +65,6 @@ export async function POST(req: NextRequest) {
       eligiblePositions,
       bats: info.bats ?? "R",
       mlbamId: info.mlbamId,
-      fangraphsId: 0,
     };
 
     const updated = await addPlayer(userId, displayName, currentRoster as Player[], player);
